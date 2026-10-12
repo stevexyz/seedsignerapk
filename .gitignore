@@ -10,3 +10,8 @@ src/seedsigner/models/settings_definition.json
 
 *.po
 *.mo
+
+PRIVATE/
+old/
+temp/
+

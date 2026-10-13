@@ -1,0 +1,65 @@
+# REASONING
+
+Running, chronological reasoning log. Read this before taking over; extend it as reasoning evolves (dead ends and corrections, not just conclusions).
+
+## 2025 — Bootstrap: documentation for the Android port
+
+Goal: port SeedSigner (Python, Raspberry Pi) to Android. Upstream is vendored read-only in `seedsigner_orig/`. This phase is documentation only; no app code yet. The binding requirements live in [docs/spec.md](docs/spec.md); this file records *why*.
+
+### Decisions
+
+| # | Decision | Why |
+| - | -------- | --- |
+| 1 | **Total isolation** (user constraint): only inputs touch + camera, only output screen | User requirement. Consequences: manifest declares only the camera permission; nothing may open a runtime channel. |
+| 2 | **Statelessness** (from upstream, maps 1:1) | Seeds in process memory only; process death wipes them. |
+| 3 | **No external dependencies**; vendored source allowed with attribution in `VENDORED.md` (user constraint, refined to allow copy-paste where licenses permit) | Full self-containment keeps the audit surface = this repo. Vendoring a proven QR decoder is cheaper and safer than writing Reed-Solomon from scratch. |
+| 4 | **Minimal Google dependency** (user constraint): classic SDK framework only; AndroidX/Jetpack artifacts forbidden unless absolutely required, with the reason recorded here | Baseline: classic Views, `camera2`, plain-file settings — all in the SDK, zero Google artifacts. |
+| 5 | Language: Kotlin; `core` module is pure Kotlin with no Android imports | Kotlin stdlib ships with the toolchain (not a dependency). Pure-Kotlin core makes every crypto/QR routine unit-testable on a plain JVM against upstream test vectors. Crypto core sits behind one interface, swappable for Rust later if wanted. |
+| 6 | Architecture mirrors upstream MVC: one Activity, one Screen class per upstream View, thin Controller | 1:1 mapping makes the port auditable side by side with the Python original. |
+| 7 | All UI is touchscreen; no physical-key assumptions anywhere | The Pi's 4 buttons + joystick have no Android counterpart. |
+| 8 | QR decoder: **vendor ZXing** (Apache-2.0) — copy the needed Java source files (QR decode subset only) into `core/` **as-is, no Kotlin rewrite** | Mature, pure Java; Kotlin calls Java 1:1, so a rewrite would only add translation bugs. Trust model (user requirement): the repo is the entire build input — source is here, build happens here, nothing is fetched. `VENDORED.md` pins exact version + SHA-256 of the official release so the copy is verifiable by diff. |
+| 9 | Minimum SDK: **API 28 (Android 9)** | `camera2` fully stable, covers the vast majority of devices in use, keeps the API surface small. Revisit only if a real need appears. |
+| 10 | Security reports go through **GitHub issues** (user decision); no SLA is promised. Delicate reports stay detail-free in the issue and offer direct contact for the details | **Transparency**: every reported issue is publicly visible to the community; only genuinely sensitive details move to direct contact. A vague report is enough to open the channel. |
+| 11 | All binding requirements live in one file: `docs/spec.md` | Constraints were being restated in 5 files and drifting. One source of truth; everything else links to it. |
+| 12 | Docs identical to upstream are **referenced**, not copied | QR formats, Electrum, SeedQR, SLIP-0132 are protocol-level and platform-independent. Duplication creates two sources of truth. |
+| 13 | Dropped `raspberry_pi_os_build_instructions.md`, `usb_relay.md`, `legacy_hardware.md` | Pure Pi hardware, no Android equivalent. Replaced by `build_instructions.md` and `debug_crash.md` (adb). |
+| 14 | `dice_verification.md` keeps upstream screenshots, marked as reference from the Pi build | The fixed inputs and expected outputs (fingerprint, zpub, addresses) are the verification value; they are platform-independent. |
+| 15 | `seedsigner_orig/` is read-only | Reference implementation + `tools/mnemonic.py` cross-check. Never edit it. |
+| 16 | Removed upstream CI (`.github/`) and `.gitmodules`; rewrote `.gitignore` for Android | They referenced Python packaging, submodules, and paths that do not exist in this repo. CI is re-created at roadmap v0.1 ("CI: build + unit tests"). |
+
+### Decisions (v0.0, implementation phase)
+
+| # | Decision | Why |
+| - | -------- | --- |
+| 17 | Build toolchain lives in `~/toolchain` (Temurin JDK 17, Android SDK 34, adb, Gradle) — no root | Dev machine has no passwordless sudo; everything the spec allows as toolchain (JDK/SDK/Gradle) installs cleanly into the user home. Kept outside the repo so `git clone` + toolchain stays the only build input. |
+| 18 | Build system: Gradle + Android Gradle Plugin (Google first-party, build-time only) | AGP is a build tool, not a runtime artifact: the app's dependency tree stays platform-only per spec §1.3/§1.4. The `./gradlew assembleDebug` flow is already documented in `docs/build_instructions.md`. Kotlin/AGP plugin jars are fetched into the local Gradle cache like any compiler — toolchain, not dependencies. |
+
+| 19 | BIP39 differential testing via `tools/crosscheck_bip39.py` (embit in a dev venv, `~/toolchain/venv`) | spec.md §3 requires differential tests against upstream Python; the tool is committed and re-runnable, the venv is dev-time only and never a build input |
+| 20 | Crypto primitives are pure Kotlin on `java.math.BigInteger` (secp256k1 affine, RFC-6979 signing + embit's DER-length grind loop, RIPEMD-160 ported from embit's `py_ripemd160.py`) — no native libs | Spec §1.3 forbids third-party runtime deps. `BigInteger` is JDK, not a dependency. Byte-identity to embit is enforced by `:core:test` (documented vectors from `dice_verification.md`) + the re-runnable crosscheck tool. |
+| 21 | **Only very trusted sources** for everything (user constraint): specs, algorithms, test vectors, reference behavior | Memory is not a source. Allowed: the BIP texts + their official test vectors from `github.com/bitcoin/bips` (raw), the embit 0.8.0 source installed in `~/toolchain/venv` (the upstream's own library), Bitcoin Core, RFCs. Anything fetched is checked in-session (e.g. BIP-340/341 were downloaded to /tmp before porting schnorr/taproot). |
+| 22 | **Simplest possible solution** in every case (user constraint) | 1:1 ports over clever abstractions; no helper layers, no extra types, no premature generalization. A direct translation of the reference code is the simplest thing that can be audited against it. |
+| 23 | **No prebuilt binaries anywhere in the verification path** (user constraint): every artifact we check against must be source code we can read — embit's pure-Python secp256k1 (`embit/util/py_secp256k1.py` + `key.py`), forced in `tools/crosscheck_*.py` via `sys.modules["embit.util.ctypes_secp256k1"] = None` | embit's prebuilt `libsecp256k1_linux_x86_64.so` (2021, secp256k1-zkp build) produces BIP-340 nonces that match *neither* the BIP-340 spec nor any source-fetched zkp revision; its behavior cannot be audited, so it cannot be a byte-identity target. The pure-Python backend is embit's own source and is what our Kotlin is verified against. The `.so` also segfaulted intermittently under ctypes. |
+| 24 | **The app must be a drop-in replacement for upstream SeedSigner** (user constraint): identical functionality, flows, and QR protocols, so a wallet user can switch between the Pi device and the APK freely. Android UI: all physical-button interactions become **emulated on-screen buttons**; future stretch goal — draw the SeedSigner case itself on screen (case + buttons + inner screen) for a better emulation feel (roadmap "Beyond") | Upstream's contract *is* the feature spec; divergent behavior would break the replacement promise. The Pi's physical buttons have no Android equivalent other than touch. |
+
+### Pitfalls hit
+
+| What was believed | What was true | Rule that prevents the repeat |
+| ----------------- | ------------- | ----------------------------- |
+| `sdkmanager --sdk_root=~/toolchain/android-sdk` installs into `~/toolchain/android-sdk` | Bash does not tilde-expand `~` after `=`, so packages were installed into a literal directory named `~` under `cmdline-tools/` | Always `$HOME/...` (or a plain variable) in tool arguments, never `~` after `=`. |
+| In Kotlin, `a shl 24 or b shl 16` means `((a shl 24) or b) shl 16` | Infix calls (`or`, `and`, `xor`) bind **tighter** than the shift operators (`shl`, `shr`, `ushr`), the opposite of C/Java intuition. The BIP-32 fingerprint came out `9c00ced8` instead of `8d9cced8` while every hash was verified byte-correct | Always parenthesize each shifted term in bit-packing expressions: `((a shl 24) or (b shl 16) or ...)`. Grep rule: `) shl [0-9]+ or` without outer parens is a bug. |
+| The secp256k1 general-addition slope was `(y2-y1)/(x1-x2)` | The slope is `(y2-y1)/(x2-x1)`. Every point past 2G was off-curve (detected because `y²≠x³+7`), yet 2G matched the known constant, which hid the bug for a while | After any curve-op change, assert the point is on the curve (`y²≡x³+7`) in tests, not just equality with a constant. |
+| For a QNR input, multiplying `a^((p+1)/4)` by `2^((p-1)/4)` recovers the square root | secp256k1 has `p ≡ 7 (mod 8)`, so 2 is a **quadratic residue** and `2^((p-1)/4) ≡ ±1` — the “multiply by sqrt(−1)” trick is a no-op. For valid x the `p ≡ 3 (mod 4)` formula `y = ySq^((p+1)/4)` always works; anything else means x is not on the curve | Compressed-point recovery: compute `y = ySq^((p+1)/4)`, `require(y² ≡ ySq)`, then fix parity. No fallback branch. |
+| `BC1QW508D6QEJXTDG4Y5P3AGTQPX9K6KNK9R73V33U` is a BIP-173 valid vector | It fails the bech32 checksum; embit rejects it. Test vectors written from memory are unreliable | Every test vector must be generated/verified against a trusted source (embit, the BIP text) in the same session it is committed. The real BIP-173 v0 vector for program `751e76e8…` is `bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4`. |
+| BIP-32 serialization: write a key-type prefix byte, then the 33-byte pubkey | The 33-byte compressed pubkey **already contains** its 0x02/0x03 prefix; the layout is 13 + 32 + 33 = 78 bytes. An extra prefix byte overflows the payload | Mirror the BIP-32 byte layout exactly: public → 33 bytes from offset 45; private → `0x00` + 32 bytes. Also reject kind/version mismatch in `serialize` (embit raises `HDError`). |
+| The bech32 polymod `chk ^= GEN[i]` per set bit was “wrong” and was “fixed” to `GEN[0]/GEN[4]` | The original matched the BIP-173 reference exactly (embit `bech32.py`); the “fix” broke every checksum. The real failures around it were elsewhere (stale test runs, bogus vectors) | Before changing code to match a spec from memory, diff against the reference implementation on disk (`~/toolchain/venv/.../embit/`) and run a known-good vector through the *unchanged* code first. |
+| embit's `.so` BIP-340 signatures were assumed reproducible from spec-standard RFC-6979-style nonces (tried: spec no-aux, aux-zero XOR, zkp source from 3 tags) | The 2021 zkp `.so` uses a nonce scheme that matches none of them; even embit itself re-signing the same (key, msg) through its own API sometimes gave a different sig than the one stored earlier (context/lock-dependent native state), plus intermittent segfaults | Never chase byte-identity against a closed binary. If a reference is not source-readable, it is not a valid target — switch the reference to source (embit's `py_secp256k1` pure-Python backend) and verify against that. |
+
+### Open questions
+
+None. New ones are recorded here when they appear.
+
+### Constraints
+
+* Main repo: <https://github.com/stevexyz/seedsignerapk> — **never push**, the user pushes.
+* Never enter `old*` directories; never read `PRIVATE*` files.
+* Keep every doc as simple as possible — always.

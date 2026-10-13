@@ -14,12 +14,13 @@ import java.text.Normalizer
  */
 class Seed(
     mnemonic: List<String>,
-    val passphrase: String = "",
+    passphrase: String = "",
     val wordlistLanguageCode: String = Const.WORDLIST_LANGUAGE__ENGLISH
 ) {
     private val _mnemonicList: List<String>
-    private val _passphrase: String
-    val seedBytes: ByteArray
+    private var _passphrase: String
+    var seedBytes: ByteArray
+        private set
 
     init {
         require(mnemonic.isNotEmpty()) { "Must initialize a Seed with a mnemonic List<String>" }
@@ -28,6 +29,14 @@ class Seed(
             .split(" ")
         _passphrase = if (passphrase.isNotEmpty()) Normalizer.normalize(passphrase, Normalizer.Form.NFKD) else ""
         seedBytes = Bip39.mnemonicToSeed(mnemonicStr, _passphrase)
+    }
+
+    val passphrase: String get() = _passphrase
+
+    /** Upstream `set_passphrase`: NFKD-normalize and regenerate the seed. */
+    fun setPassphrase(passphrase: String, regenerateSeed: Boolean = true) {
+        _passphrase = if (passphrase.isNotEmpty()) Normalizer.normalize(passphrase, Normalizer.Form.NFKD) else ""
+        if (regenerateSeed) seedBytes = Bip39.mnemonicToSeed(mnemonicStr, _passphrase)
     }
 
     companion object {

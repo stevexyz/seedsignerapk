@@ -31,6 +31,9 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+        // Controller maps Destination.viewArgs to View constructor parameter
+        // names, which requires real names in the class file.
+        freeCompilerArgs = freeCompilerArgs + "-java-parameters"
     }
 }
 

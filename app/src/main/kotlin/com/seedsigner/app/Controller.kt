@@ -119,7 +119,7 @@ class Controller private constructor() {
 
     private fun runView(act: Activity, dest: Destination) {
         val view = try {
-            dest.ViewCls!!.getDeclaredConstructor().newInstance()
+            instantiateView(dest)
         } catch (e: Exception) {
             Log.e("Controller", "failed to instantiate ${dest.ViewCls?.name}", e)
             runDestination(handleException(e))
@@ -205,6 +205,24 @@ class Controller private constructor() {
             }
         }
         return Destination(null)
+    }
+
+    /**
+     * Instantiate a View from its Destination: no-arg constructor when there
+     * are no viewArgs, otherwise the constructor whose parameter names
+     * (Kotlin compiles with -java-parameters) exactly match the viewArgs keys.
+     * Mirrors upstream's `View_cls(**view_args)`.
+     */
+    private fun instantiateView(dest: Destination): View {
+        val cls = dest.ViewCls!!
+        val args = dest.viewArgs
+        if (args.isEmpty()) return cls.getDeclaredConstructor().newInstance() as View
+        val ctor = cls.declaredConstructors.first {
+            it.parameters.size == args.size &&
+                args.keys.all { k -> it.parameters.any { p -> p.name == k } }
+        }
+        ctor.isAccessible = true
+        return ctor.newInstance(*ctor.parameters.map { args[it.name]!! }.toTypedArray()) as View
     }
 
     /**

@@ -1,6 +1,6 @@
 # Current Task
 
-**Status: [in progress] v0.1 — `core` complete (all crosschecks green); `app` shell (B) + camera/QR display (C) complete and building; load-seed flow (Chunk D) next.**
+**Status: [in progress] v0.1 — `core` complete (all crosschecks green); `app` shell (B) + camera/QR display (C) + load-seed flow (D) complete and building; xpub export (Chunk E) next.**
 
 ## Progress so far (v0.0)
 
@@ -45,7 +45,8 @@
 | A | `core`: CBOR writer + urtypes crypto types (crypto-account, crypto-psbt payloads, 1:1 from the commit-pinned `urtypes` source in upstream requirements), ZXing encoder moved test→main (app needs it for display), crosscheck vs Python | done — 10/10 byte-identical (`:core:crosscheck-urtypes`), commit `ce14bbf` |
 | B | `app` shell: MainActivity + Controller (back stack, Destination) + View base + Ui helpers + Settings (plain file) + SeedStorage (in-memory) + OpeningSplash + MainMenu + SettingsMenu + SeedsMenu/LoadSeed + ErrorView | done — `:app:assembleDebug` green, APK permissions = CAMERA only |
 | C | Camera2 scanner (YUV → vendored ZXing, 4-rotation retry) + animated QR display view (BitMatrix → Bitmap, UR2 part cycling, density setting) | done — `CameraScanner` (camera2, YUV_420_888 → `GlobalHistogramBinarizer` → `QRCodeReader`, 4-rotation sweep via Y-plane repack), `QrDisplay` (bitmap render + `ur2Parts` at 10/30/120 density), `ScanView` (live preview, UR-part accumulation via core `URDecoder`, runtime CAMERA permission), `QrDisplayView` (2 s/part cycling) |
-| D | Load-seed flow: LoadSeedView, SeedMnemonicEntryView (on-screen BIP39 word grid), invalid/finalize views | **next** |
+| D | Load-seed flow: LoadSeedView, SeedMnemonicEntryView (on-screen BIP39 word grid), invalid/finalize views | done — `SeedMnemonicEntryView` (a–z keyboard + backspace, live candidate list = wordlist prefix filter, inert dead-end letters, word-level back), `SeedMnemonicInvalidView`, `SeedFinalizeView` (fingerprint + optional passphrase), `SeedAddPassphraseView` / `SeedAddPassphraseExitDialogView` / `SeedReviewPassphraseView` (with/without-fingerprint), `SeedDiscardView`; `Seed.setPassphrase` regenerates seed bytes; Controller maps `Destination.viewArgs` → View constructor params (`-java-parameters`) |
+| E | xpub export flow (seed → derivation path → xpub QR) + BIP-85 child seeds | **next** |
 | C | Camera2 scanner (YUV → vendored ZXing, 4-rotation retry) + animated QR display view (BitMatrix → Bitmap, UR2 part cycling, density setting) | not started |
 | D | Load-seed flow: LoadSeedView, SeedMnemonicEntryView (on-screen BIP39 word grid), invalid/finalize views | not started |
 | E | xpub export: sig type → script type → QR format (static / Specter pXofY / UR crypto-account) → details → QR display | not started |

@@ -8,3 +8,4 @@ local.properties
 PRIVATE/
 old/
 temp/
+__pycache__/

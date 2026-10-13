@@ -36,3 +36,11 @@ tasks.register<JavaExec>("crosscheck-psbt") {
     classpath = sourceSets.main.get().output + sourceSets.test.get().output +
         configurations.getByName("testRuntimeClasspath")
 }
+
+// UR2 differential-testing harness, driven by tools/crosscheck_ur2.py (spec.md §3b).
+tasks.register<JavaExec>("crosscheck-ur2") {
+    dependsOn("compileKotlin", "compileTestKotlin")
+    mainClass.set("com.seedsigner.core.qr.ur2.CrosscheckUr2Kt")
+    classpath = sourceSets.main.get().output + sourceSets.test.get().output +
+        configurations.getByName("testRuntimeClasspath")
+}

@@ -1,6 +1,8 @@
 # Current Task
 
-**Status: [in progress] v0.1 — `core` complete (all crosschecks green); `app` shell (B) + camera/QR display (C) + load-seed flow (D) complete and building; xpub export (Chunk E) next.**
+**Status: [in progress] v0.1 — chunks A–E done and building; PSBT sign flow (Chunk F) next.**
+
+**Bug found in E:** `Networks.fromName` only accepted "mainnet" while `mapNetworkToEmbit` returns "main" → every `Seed.getFingerprint`/`getXpub` call would have thrown at runtime. Fixed in `core` (`fromName` now accepts both). Caught by the new `:app:testDebugUnitTest` (first app-module unit tests).
 
 ## Progress so far (v0.0)
 
@@ -46,7 +48,8 @@
 | B | `app` shell: MainActivity + Controller (back stack, Destination) + View base + Ui helpers + Settings (plain file) + SeedStorage (in-memory) + OpeningSplash + MainMenu + SettingsMenu + SeedsMenu/LoadSeed + ErrorView | done — `:app:assembleDebug` green, APK permissions = CAMERA only |
 | C | Camera2 scanner (YUV → vendored ZXing, 4-rotation retry) + animated QR display view (BitMatrix → Bitmap, UR2 part cycling, density setting) | done — `CameraScanner` (camera2, YUV_420_888 → `GlobalHistogramBinarizer` → `QRCodeReader`, 4-rotation sweep via Y-plane repack), `QrDisplay` (bitmap render + `ur2Parts` at 10/30/120 density), `ScanView` (live preview, UR-part accumulation via core `URDecoder`, runtime CAMERA permission), `QrDisplayView` (2 s/part cycling) |
 | D | Load-seed flow: LoadSeedView, SeedMnemonicEntryView (on-screen BIP39 word grid), invalid/finalize views | done — `SeedMnemonicEntryView` (a–z keyboard + backspace, live candidate list = wordlist prefix filter, inert dead-end letters, word-level back), `SeedMnemonicInvalidView`, `SeedFinalizeView` (fingerprint + optional passphrase), `SeedAddPassphraseView` / `SeedAddPassphraseExitDialogView` / `SeedReviewPassphraseView` (with/without-fingerprint), `SeedDiscardView`; `Seed.setPassphrase` regenerates seed bytes; Controller maps `Destination.viewArgs` → View constructor params (`-java-parameters`) |
-| E | xpub export flow (seed → derivation path → xpub QR) + BIP-85 child seeds | **next** |
+| E | xpub export flow (seed → derivation path → xpub QR) + BIP-85 child seeds | done — 7 views 1:1 (`SigType` → `ScriptType` → `CustomDerivation` → `QRFormat` → `Warning` → `Details` → `QRDisplay`), `Derivation.standardDerivationPath` (44'/49'/84'/86'/45'/48' table), `Seed.deriveXpub`/`detectVersion`/`derivationOverride`, 3 QR formats (static, Specter pXofY 40/65/90, UR crypto-account fountain via Chunk-A `UrTypes.xpubAccountCbor`); `LEGACY_P2PKH`/`CUSTOM_DERIVATION` constants added (defaults unchanged); BIP-85 = Chunk F/G scope. `:app:testDebugUnitTest` pins fingerprint + BIP-84 zpub to the dice vectors |
+| F | PSBT sign flow (scan PSBT → coin selection n/a → sign → display) | **next** |
 | C | Camera2 scanner (YUV → vendored ZXing, 4-rotation retry) + animated QR display view (BitMatrix → Bitmap, UR2 part cycling, density setting) | not started |
 | D | Load-seed flow: LoadSeedView, SeedMnemonicEntryView (on-screen BIP39 word grid), invalid/finalize views | not started |
 | E | xpub export: sig type → script type → QR format (static / Specter pXofY / UR crypto-account) → details → QR display | not started |

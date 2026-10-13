@@ -66,6 +66,69 @@ class Seed(
         return fp.toUInt().toString(16).padStart(8, '0')
     }
 
+    /**
+     * Upstream `Seed.detect_version`: embit's `bip32.detect_version` with
+     * default "xpub".
+     */
+    fun detectVersion(
+        derivationPath: String,
+        network: String = Const.MAINNET,
+        sigType: String = Const.SINGLE_SIG
+    ): String {
+        val embitNet = Networks.fromName(mapNetworkToEmbit(network))
+        return Bip32.detectVersion(derivationPath, "xpub", embitNet)
+    }
+
+    /** BIP-39 seeds have no script/derivation overrides (upstream base class). */
+    val scriptOverride: String? get() = null
+
+    fun derivationOverride(sigType: String = Const.SINGLE_SIG): String? = null
+
+    /** The xpub's pieces, as the QR encoders need them (encode_qr.py prep_xpub). */
+    data class DerivedXpub(
+        val key: ByteArray,          // 33-byte compressed pub key
+        val chainCode: ByteArray,    // 32 bytes
+        val parentFingerprint: ByteArray, // 4 bytes, big-endian
+        val rootFingerprint: ByteArray,   // 4 bytes, big-endian
+        val base58: String
+    ) {
+        /** Upstream `xpubstring`: "[fingerprint/derivation]xpub_base58". */
+        fun xpubstring(fingerprint: ByteArray, derivation: String): String =
+            "[${fingerprintHex(fingerprint)}${derivation.drop(1)}]$base58"
+
+        companion object {
+            fun intToFingerprint(i: Int): ByteArray =
+                byteArrayOf((i ushr 24).toByte(), (i ushr 16).toByte(), (i ushr 8).toByte(), i.toByte())
+
+            fun fingerprintHex(b: ByteArray): String =
+                b.fold(0L) { acc, x -> (acc shl 8) or (x.toLong() and 0xFF) }
+                    .toString(16).padStart(8, '0')
+        }
+    }
+
+    fun deriveXpub(
+        derivationPath: String,
+        network: String = Const.MAINNET
+    ): DerivedXpub {
+        val version = detectVersion(derivationPath, network)
+        val embitNet = Networks.fromName(mapNetworkToEmbit(network))
+        val root = Bip32.HDKey.fromSeed(seedBytes, embitNet.versions["xprv"]!!)
+        val rootFingerprint = DerivedXpub.intToFingerprint(root.fingerprintOfChild())
+        val xprv = Bip32.derive(root, derivationPath)
+        val xpub = xprv.toPublic()
+        val xpubKey = Bip32.HDKey(
+            embitNet.versions[version]!!, xpub.depth, xpub.fingerprint, xpub.childNumber,
+            xpub.chainCode, null, xpub.publicKey
+        )
+        return DerivedXpub(
+            key = xpub.publicKey,
+            chainCode = xpub.chainCode,
+            parentFingerprint = DerivedXpub.intToFingerprint(xpub.fingerprint),
+            rootFingerprint = rootFingerprint,
+            base58 = xpubKey.serialize(embitNet, version)
+        )
+    }
+
     fun getXpub(walletPath: String = "/", network: String = Const.MAINNET): String {
         val embitNet = Networks.fromName(mapNetworkToEmbit(network))
         val root = Bip32.HDKey.fromSeed(seedBytes, embitNet.versions["xprv"]!!)

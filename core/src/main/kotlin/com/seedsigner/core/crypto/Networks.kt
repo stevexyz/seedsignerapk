@@ -67,10 +67,13 @@ object Networks {
         coinType = 1,
     )
 
-    /** Upstream `SettingsConstants.map_network_to_embit` mapping. */
+    /**
+     * Accepts both the full names ("mainnet") and embit's short keys
+     * ("main" — what `map_network_to_embit` returns).
+     */
     fun fromName(name: String): Network = when (name) {
-        "mainnet" -> MAINNET
-        "testnet" -> TESTNET
+        "mainnet", "main" -> MAINNET
+        "testnet", "test" -> TESTNET
         "regtest" -> REGTEST
         else -> throw IllegalArgumentException("unknown network: $name")
     }

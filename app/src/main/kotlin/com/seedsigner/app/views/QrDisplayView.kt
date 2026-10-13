@@ -28,6 +28,8 @@ class QrDisplayView : View() {
 
     private val parts: List<String> = viewArgs["parts"] as List<String>
     private val title: String = (viewArgs["title"] as? String) ?: "Display QR"
+    /** Upstream QR displays return to the main menu when done. */
+    private val returnToMain: Boolean = (viewArgs["returnToMain"] as? Boolean) ?: false
 
     private val handler = Handler(Looper.getMainLooper())
     private var index = 0
@@ -73,6 +75,10 @@ class QrDisplayView : View() {
     override fun onResult(index: Int): Destination {
         cycling = false
         handler.removeCallbacksAndMessages(null)
-        return Destination(BackStackView::class.java)
+        return if (returnToMain) {
+            Destination(MainMenuView::class.java, clearHistory = true)
+        } else {
+            Destination(BackStackView::class.java)
+        }
     }
 }

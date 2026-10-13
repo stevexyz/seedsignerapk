@@ -71,14 +71,18 @@ class Settings {
             MULTISIG to "Multisig"
         )
 
-        // script types
+        // script types (same set and order as upstream ALL_SCRIPT_TYPES)
+        const val LEGACY_P2PKH = "leg"
         const val NATIVE_SEGWIT = "nat"
         const val NESTED_SEGWIT = "nes"
         const val TAPROOT = "tr"
+        const val CUSTOM_DERIVATION = "cus"
         val ALL_SCRIPT_TYPES = listOf(
+            LEGACY_P2PKH to "Legacy P2PKH",
             NATIVE_SEGWIT to "Native Segwit",
             NESTED_SEGWIT to "Nested Segwit",
-            TAPROOT to "Taproot"
+            TAPROOT to "Taproot",
+            CUSTOM_DERIVATION to "Custom Derivation"
         )
 
         // xpub qr formats

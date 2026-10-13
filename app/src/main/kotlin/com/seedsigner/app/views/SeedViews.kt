@@ -118,7 +118,7 @@ class SeedOptionsView : View() {
     override fun onResult(index: Int): Destination {
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
         return when (index) {
-            0 -> Destination(NotYetImplementedView::class.java, viewArgs = mapOf("feature" to "Export xpubs"))
+            0 -> Destination(SeedExportXpubSigTypeView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
             1 -> Destination(NotYetImplementedView::class.java, viewArgs = mapOf("feature" to "BIP-85 child seeds"))
             2 -> Destination(SeedDiscardView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
             else -> Destination(SeedsMenuView::class.java)

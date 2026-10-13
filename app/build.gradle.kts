@@ -39,4 +39,9 @@ android {
 
 dependencies {
     implementation(project(":core"))
+
+    // JVM unit tests for the models (Seed/Settings are pure Kotlin, no
+    // Android imports). JUnit comes from the Gradle distribution's
+    // mavenCentral — build-time only, not packaged into the APK.
+    testImplementation("junit:junit:4.13.2")
 }

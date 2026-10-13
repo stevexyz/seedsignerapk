@@ -9,13 +9,12 @@ repository, pinned to a specific release.
 - **Upstream**: <https://github.com/zxing/zxing>, tag `zxing-3.5.4`
 - **License**: Apache License 2.0 (each file carries its license header)
 - **Copied**: Java source only, unmodified. No JAR, no prebuilt artifact.
-- **Location**:
-  - `core/src/main/java/com/google/zxing/` — 55 files: the QR **decoder**
-    (detector, bit-matrix parser, RS decoder, data unmasking, binarizers,
-    luminance sources incl. `PlanarYUVLuminanceSource` for camera2 YUV input)
-  - `core/src/test/java/com/google/zxing/` — 11 files: the QR **encoder**
-    (test-only; the app renders QRs with its own display code, and upstream
-    SeedSigner's *encoder* is the Python `qrcode` library)
+- **Location**: `core/src/main/java/com/google/zxing/` — 66 files: the QR
+  **decoder** (detector, bit-matrix parser, RS decoder, data unmasking,
+  binarizers, luminance sources incl. `PlanarYUVLuminanceSource` for camera2
+  YUV input) and the QR **encoder** (the app renders display QRs from it;
+  note upstream SeedSigner's *display* encoder is the Python `qrcode`
+  library — what other devices show us to scan)
 
 ### Known upstream limitations (verified against pristine 3.5.4)
 

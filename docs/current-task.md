@@ -38,9 +38,21 @@
 2. `grep -ri "raspberry\|joystick\|SD card\|HDMI\|GPIO" docs/ README.md` returns only deliberate mentions of the upstream project, no user-facing instructions.
 3. No constraint is stated in more than one place with different wording — `docs/spec.md` is the source of truth.
 
-## Next step
+## Next step — v0.1 build plan (user: "finish all development" — v0.1 → v0.4 in order)
 
-1. The `app` shell (v0.1): one Activity, upstream-View-mirroring screens, emulated buttons (spec §4), SeedQR display framing on top of the `core` UR2 encoder, camera capture feeding the vendored ZXing decoder (with rotation/offset retries).
+| Chunk | Scope | State |
+| ----- | ----- | ----- |
+| A | `core`: CBOR writer + urtypes crypto types (crypto-account, crypto-psbt payloads, 1:1 from the commit-pinned `urtypes` source in upstream requirements), ZXing encoder moved test→main (app needs it for display), crosscheck vs Python | in progress |
+| B | `app` shell: MainActivity + Controller (back stack, Destination) + View base + Ui helpers + Settings (plain file) + SeedsHolder (in-memory) + OpeningSplash + MainMenu + SettingsMenu (network) + ErrorView | not started |
+| C | Camera2 scanner (YUV → vendored ZXing, 4-rotation retry) + animated QR display view (BitMatrix → Bitmap, UR2 part cycling, density setting) | not started |
+| D | Load-seed flow: LoadSeedView, SeedMnemonicEntryView (on-screen BIP39 word grid), invalid/finalize views | not started |
+| E | xpub export: sig type → script type → QR format (static / Specter pXofY / UR crypto-account) → details → QR display | not started |
+| F | PSBT flow: scan → seed select → overview → warnings → math → sign → finalize → signed QR display (UR crypto-psbt) | not started |
+| G | CI workflow (build + test), docs, v0.1 commit | not started |
+
+Then v0.2 (word picker, dice, camera entropy, passphrase, SeedQR/CompactSeedQR transcription), v0.3 (address verification, explorer, message signing, BIP85, custom paths), v0.4 (multi-key signing, Electrum, SettingsQR, polish).
+
+Upstream references (trusted, in-session checked): `seedsigner_orig/src/seedsigner/views/*.py` (52 views), `models/encode_qr.py` (QR payload contract: static xpub string, Specter pXofY, UR crypto-account with script-expression tags 400/401/403/404/409, UR crypto-psbt), `urtypes` source at commit `7fb280ea` (pinned in upstream requirements.txt) → `/tmp/urtypes-7fb280ea*/`.
 
 Repo note: upstream CI (`.github/`) and `.gitmodules` were removed as Python-specific; `.gitignore` is now Android-oriented. CI returns at v0.1.
 

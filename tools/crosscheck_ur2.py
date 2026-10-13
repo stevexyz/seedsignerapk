@@ -32,17 +32,24 @@ def build():
     import hashlib
     # Deterministic payloads of increasing size: single-part, ~2, ~5, ~11, ~21
     # fragments at max_fragment_len=1500.
-    cases = []
-    for size in (100, 2000, 6000, 15000, 40000):
-        payload = bytes(int.from_bytes(hashlib.sha256(i.to_bytes(4, "big")).digest()[:1], "big") & 0xFF for i in range(size))
-        cases.append(payload)
+    def make_payload(size):
+        return bytes(int.from_bytes(hashlib.sha256(i.to_bytes(4, "big")).digest()[:1], "big") & 0xFF for i in range(size))
 
     rows = []
-    for payload in cases:
+    # Protocol-level sizes (large fragments, few parts)
+    for size in (100, 2000, 6000, 15000, 40000):
+        payload = make_payload(size)
         encoder = UREncoder(UR("seedsigner", bytearray(payload)), max_fragment_len=1500)
         n = encoder.fountain_encoder.seq_len()  # minimum parts to transmit the message
         parts = [encoder.next_part() for _ in range(n)]
         rows.append((1500, payload, parts))
+    # Upstream display densities (encode_qr.py qr_max_fragment_size: 10/30/120)
+    for maxfrag in (10, 30, 120):
+        payload = make_payload(2000)
+        encoder = UREncoder(UR("seedsigner", bytearray(payload)), max_fragment_len=maxfrag)
+        n = encoder.fountain_encoder.seq_len()
+        parts = [encoder.next_part() for _ in range(n)]
+        rows.append((maxfrag, payload, parts))
 
     with IN.open("w") as f:
         for maxfrag, payload, parts in rows:

@@ -44,3 +44,10 @@ tasks.register<JavaExec>("crosscheck-ur2") {
     classpath = sourceSets.main.get().output + sourceSets.test.get().output +
         configurations.getByName("testRuntimeClasspath")
 }
+
+tasks.register<JavaExec>("crosscheck-qr") {
+    dependsOn("compileKotlin", "compileTestKotlin")
+    mainClass.set("com.seedsigner.core.qr.CrosscheckQrKt")
+    classpath = sourceSets.main.get().output + sourceSets.test.get().output +
+        configurations.getByName("testRuntimeClasspath")
+}

@@ -1,6 +1,6 @@
 # Current Task
 
-**Status: [in progress] v0.0 — `core` module. Crypto + PSBT + UR2 (QR data layer) complete and cross-verified; ZXing decoder next.**
+**Status: [in progress] v0.0 — `core` module. Crypto + PSBT + UR2 + QR decode all complete and cross-verified; `app` shell (v0.1) next.**
 
 ## Progress so far (v0.0)
 
@@ -13,7 +13,7 @@
 | `crypto`: secp256k1, BIP32, SLIP-0132, addresses | done | All 21 `:core:test` green, incl. fingerprint `8d9cced8`, documented BIP84 zpub + 10 receive/change addresses; BIP39 crosscheck 209/209 byte-identical to embit. `core/build/libs/core.jar` is the testable artifact |
 | `psbt`: parse, validate, sign | done | BIP-174 v0+v2 parse/serialize, sighash (legacy, BIP-143, BIP-341), ECDSA sign with embit's DER-length grind loop, BIP-340 tapkey/leaf-sign. Differential: `tools/crosscheck_psbt.py` → 8/8 cases byte-identical to embit (p2pkh, p2sh-p2wpkh, p2wpkh, p2wsh multisig, taproot, multi-input/output, explicit sighash, PSBTv2). Reference forced to embit's pure-Python secp256k1 — no prebuilt `.so` in the verification path (REASONING.md #23) |
 | `qr`: UR2 data layer (bytewords, CRC32, CBOR-lite, xoshiro256, fountain encode/decode, single+multi-part UR) | done | 1:1 port of `seedsigner_orig/src/seedsigner/helpers/ur2/` (9 modules) to `core/src/main/kotlin/com/seedsigner/core/qr/ur2/`. Differential: `tools/crosscheck_ur2.py` + `:core:crosscheck-ur2` → 5/5 cases byte-identical to the Python reference (decode with parts fed in reversed order + re-encode). 8 JVM round-trip tests incl. fountain recovery from dropped frames. SeedQR *display* framing is an `app`-layer concern (v0.1), not `core` |
-| `qr`: vendored ZXing decoder + `VENDORED.md` | not started | |
+| `qr`: vendored ZXing 3.5.4 decoder (source-only, 55 files) + `VENDORED.md` | done | Unmodified Java source from tag `zxing-3.5.4`; encoder (11 files) vendored test-only. Real-path crosscheck: `tools/crosscheck_qr.py` + `:core:crosscheck-qr` — Python `qrcode` renders all UR2 parts at upstream densities (10/30/120 cbor bytes) → vendored decoder reads 277/284; the 7 failures are a pinned upstream ZXing 3.5.4 detector limitation (pristine ZXing fails identically; OpenCV decodes them fine), mitigated in the app with rotation/offset retries. JVM tests: `ZxingDecodeTest` (round-trip, PNG re-encode, noise + rescale, garbage rejection). Upstream density sizes sourced from `seedsigner_orig/.../encode_qr.py` (`qr_max_fragment_size`) |
 | `app` shell (v0.1) | not started | |
 
 ## The doc set
@@ -40,8 +40,7 @@
 
 ## Next step
 
-1. Vendor ZXing decoder (Apache-2.0 source) into `core` + write `VENDORED.md` with attribution; test decoding a real QR PNG of a UR2 part.
-2. Then the `app` shell (v0.1): one Activity, upstream-View-mirroring screens, emulated buttons (spec §4), SeedQR display framing on top of the `core` UR2 encoder.
+1. The `app` shell (v0.1): one Activity, upstream-View-mirroring screens, emulated buttons (spec §4), SeedQR display framing on top of the `core` UR2 encoder, camera capture feeding the vendored ZXing decoder (with rotation/offset retries).
 
 Repo note: upstream CI (`.github/`) and `.gitmodules` were removed as Python-specific; `.gitignore` is now Android-oriented. CI returns at v0.1.
 

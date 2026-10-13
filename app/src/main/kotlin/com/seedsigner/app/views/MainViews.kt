@@ -40,7 +40,7 @@ class MainMenuView : View() {
     }
 
     override fun onResult(index: Int): Destination = when (index) {
-        0 -> Destination(ScanStubView::class.java)
+        0 -> Destination(ScanView::class.java)
         1 -> Destination(SeedsMenuView::class.java)
         2 -> Destination(ToolsMenuView::class.java)
         3 -> Destination(SettingsMenuView::class.java)
@@ -76,13 +76,6 @@ class PowerOptionsView : View() {
         }
         else -> Destination(BackStackView::class.java)
     }
-}
-
-/** Scan flow lands in Chunk F (camera + PSBT). */
-class ScanStubView : View() {
-    override fun run(activity: Activity): Destination =
-        Destination(NotYetImplementedView::class.java,
-            viewArgs = mapOf("feature" to "Scan (PSBT signing)"))
 }
 
 /** Tools menu lands with its features (address verification, BIP-85, message signing). */

@@ -175,6 +175,23 @@ class Controller private constructor() {
         currentScreen?.back()
     }
 
+    /**
+     * Runtime CAMERA permission (manifest declares it; Android 6+ still
+     * asks at first use). [cb] gets the grant result on the main thread.
+     */
+    fun requestCameraPermission(cb: (Boolean) -> Unit) {
+        pendingPermission = cb
+        activity?.requestPermissions(arrayOf(android.Manifest.permission.CAMERA), 1)
+    }
+
+    /** MainActivity.onRequestPermissionsResult forwarder. */
+    fun onPermissionResult(granted: Boolean) {
+        pendingPermission?.invoke(granted)
+        pendingPermission = null
+    }
+
+    private var pendingPermission: ((Boolean) -> Unit)? = null
+
     fun clearBackStack() {
         backStack.clear()
     }

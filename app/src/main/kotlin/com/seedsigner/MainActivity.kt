@@ -29,4 +29,14 @@ class MainActivity : Activity() {
     override fun onBackPressed() {
         Controller.instance.onBack()
     }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        val granted = grantResults.isNotEmpty() &&
+            grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+        Controller.instance.onPermissionResult(granted)
+    }
 }

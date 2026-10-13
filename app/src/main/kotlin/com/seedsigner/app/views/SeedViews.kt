@@ -69,7 +69,7 @@ class LoadSeedView : View() {
     override fun onResult(index: Int): Destination {
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
         return when (loadButtons[index]) {
-            "Scan a SeedQR" -> Destination(ScanStubView::class.java)
+            "Scan a SeedQR" -> Destination(ScanView::class.java)
             "Enter 12-word seed" -> {
                 controller.storage.initPendingMnemonic(numWords = 12)
                 Destination(SeedMnemonicEntryView::class.java)

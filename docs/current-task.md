@@ -1,6 +1,6 @@
 # Current Task
 
-**Status: [in progress] v0.0 — `core` module. Crypto + PSBT + UR2 + QR decode all complete and cross-verified; `app` shell (v0.1) next.**
+**Status: [in progress] v0.1 — `core` complete (all crosschecks green); `app` shell (Chunk B) complete and building; camera + QR display (Chunk C) next.**
 
 ## Progress so far (v0.0)
 
@@ -42,8 +42,9 @@
 
 | Chunk | Scope | State |
 | ----- | ----- | ----- |
-| A | `core`: CBOR writer + urtypes crypto types (crypto-account, crypto-psbt payloads, 1:1 from the commit-pinned `urtypes` source in upstream requirements), ZXing encoder moved test→main (app needs it for display), crosscheck vs Python | in progress |
-| B | `app` shell: MainActivity + Controller (back stack, Destination) + View base + Ui helpers + Settings (plain file) + SeedsHolder (in-memory) + OpeningSplash + MainMenu + SettingsMenu (network) + ErrorView | not started |
+| A | `core`: CBOR writer + urtypes crypto types (crypto-account, crypto-psbt payloads, 1:1 from the commit-pinned `urtypes` source in upstream requirements), ZXing encoder moved test→main (app needs it for display), crosscheck vs Python | done — 10/10 byte-identical (`:core:crosscheck-urtypes`), commit `ce14bbf` |
+| B | `app` shell: MainActivity + Controller (back stack, Destination) + View base + Ui helpers + Settings (plain file) + SeedStorage (in-memory) + OpeningSplash + MainMenu + SettingsMenu + SeedsMenu/LoadSeed + ErrorView | done — `:app:assembleDebug` green, APK permissions = CAMERA only |
+| C | Camera2 scanner (YUV → vendored ZXing, 4-rotation retry) + animated QR display view (BitMatrix → Bitmap, UR2 part cycling, density setting) | **next** |
 | C | Camera2 scanner (YUV → vendored ZXing, 4-rotation retry) + animated QR display view (BitMatrix → Bitmap, UR2 part cycling, density setting) | not started |
 | D | Load-seed flow: LoadSeedView, SeedMnemonicEntryView (on-screen BIP39 word grid), invalid/finalize views | not started |
 | E | xpub export: sig type → script type → QR format (static / Specter pXofY / UR crypto-account) → details → QR display | not started |

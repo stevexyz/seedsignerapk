@@ -2,21 +2,31 @@ package com.seedsigner
 
 import android.app.Activity
 import android.os.Bundle
-import android.widget.TextView
+import android.view.WindowManager
+import com.seedsigner.app.Controller
 
 /**
- * v0.0 skeleton: one Activity hosting one screen at a time
- * (docs/code_structure.md). Screen classes and the Controller land in v0.1.
+ * The single Activity (spec §1.4: one Activity, View-swapped screens).
+ * All app state lives in the Controller; process death wipes the seeds.
  */
 class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(
-            TextView(this).apply {
-                text = "SeedSigner"
-                setPadding(64, 64, 64, 64)
-            }
-        )
+
+        // screen always on while the app is foreground (upstream behavior:
+        // the Pi keeps its display lit during flows)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        setContentView(android.widget.FrameLayout(this))
+
+        val controller = Controller.instance
+        controller.attachActivity(this)
+        controller.start()
+    }
+
+    /** Android back gesture == on-screen back arrow (upstream RET_CODE__BACK_BUTTON). */
+    override fun onBackPressed() {
+        Controller.instance.onBack()
     }
 }

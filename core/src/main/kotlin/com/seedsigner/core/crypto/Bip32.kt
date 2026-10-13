@@ -188,6 +188,37 @@ object Bip32 {
         return current
     }
 
+    /**
+     * 1:1 port of embit `bip32.detect_version(path, default, network)`
+     * (SLIP-132 version detection from derivation path).
+     */
+    fun detectVersion(path: String, default: String = "xprv", network: Networks.Network): String {
+        val indices = if (path == "m") {
+            emptyList()
+        } else {
+            path.removePrefix("m").split("/").filter { it.isNotEmpty() }.map { component ->
+                val hardened = component.endsWith("h") || component.endsWith("H") || component.endsWith("'")
+                val num = component.dropLast(if (hardened) 1 else 0).toInt()
+                if (hardened) num + HARDENED else num
+            }
+        }
+        var key = default
+        if (indices.isEmpty()) return key
+        when (indices[0]) {
+            HARDENED + 84 -> key = "z" + default.drop(1)
+            HARDENED + 49 -> key = "y" + default.drop(1)
+            HARDENED + 48 -> {
+                if (indices.size >= 4) {
+                    when (indices[3]) {
+                        HARDENED + 1 -> key = "Y" + default.drop(1)
+                        HARDENED + 2 -> key = "Z" + default.drop(1)
+                    }
+                }
+            }
+        }
+        return key
+    }
+
     private fun Int.toByteVector4BE(): ByteArray = byteArrayOf(
         (this ushr 24).toByte(), (this ushr 16).toByte(), (this ushr 8).toByte(), this.toByte()
     )

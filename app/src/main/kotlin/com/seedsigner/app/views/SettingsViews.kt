@@ -1,0 +1,140 @@
+package com.seedsigner.app.views
+
+import android.app.Activity
+import com.seedsigner.app.Destination
+import com.seedsigner.app.Ui
+import com.seedsigner.app.View
+import com.seedsigner.app.models.Settings
+
+/**
+ * 1:1 port of upstream SettingsMenuView (settings_views.py).
+ *
+ * Android deviation (documented): the "Hardware" visibility level is
+ * dropped — its entries (display, panel brightness, camera rotation) do not
+ * exist on Android. General → Advanced nesting is preserved.
+ */
+class SettingsMenuView : View() {
+
+    private val visibility: Int =
+        (viewArgs["visibility"] as? Int) ?: Settings.Const.VISIBILITY__GENERAL
+
+    override fun run(activity: Activity): Destination? {
+        val c = Settings.Const
+        val entries = controller.settings.entries.filter { it.visibility == visibility }
+
+        val labels = entries.map { it.displayName }
+        val screen = Ui.screen(activity,
+            if (visibility == c.VISIBILITY__GENERAL) "Settings" else "Advanced")
+
+        val extraButtons = when (visibility) {
+            c.VISIBILITY__GENERAL -> listOf("Advanced", "Version")
+            else -> emptyList()
+        }
+        screen.addButtons(labels + extraButtons)
+        controller.showScreen(screen)
+
+        // remember which row was tapped for onResult
+        tapped = screen // not needed; index math is stable
+        return null
+    }
+
+    private var tapped: Ui.Screen? = null
+    private val entryCount get() =
+        controller.settings.entries.count { it.visibility == visibility }
+
+    override fun onResult(index: Int): Destination {
+        val c = Settings.Const
+        if (index == Ui.RET_CODE_BACK) {
+            return if (visibility == c.VISIBILITY__GENERAL) {
+                Destination(MainMenuView::class.java)
+            } else {
+                Destination(SettingsMenuView::class.java)
+            }
+        }
+        if (index < entryCount) {
+            val entry = controller.settings.entries
+                .filter { it.visibility == visibility }[index]
+            return Destination(SettingsEntryUpdateView::class.java,
+                viewArgs = mapOf("attrName" to entry.attrName))
+        }
+        val extraIndex = index - entryCount
+        return if (visibility == c.VISIBILITY__GENERAL) {
+            when (extraIndex) {
+                0 -> Destination(SettingsMenuView::class.java,
+                    viewArgs = mapOf("visibility" to c.VISIBILITY__ADVANCED))
+                else -> Destination(VersionView::class.java)
+            }
+        } else {
+            Destination(SettingsMenuView::class.java)
+        }
+    }
+}
+
+/**
+ * Upstream SettingsEntryUpdateSelectionView: pick one option (SELECT_1 /
+ * ENABLED_DISABLED) or toggle a set (MULTISELECT).
+ */
+class SettingsEntryUpdateView : View() {
+
+    private val attrName: String = viewArgs["attrName"] as String
+    private val entry: Settings.Entry by lazy { controller.settings.getEntry(attrName) }
+
+    override fun run(activity: Activity): Destination? {
+        val c = Settings.Const
+        val labels: List<String>
+        val currentValues: List<String>
+
+        if (entry.type == c.TYPE__MULTISELECT) {
+            currentValues = controller.settings.getValue<List<String>>(attrName)
+            labels = entry.selectionOptions.map { (value, name) ->
+                if (value in currentValues) "✓ $name" else "  $name"
+            }
+        } else {
+            val current = controller.settings.getValue<String>(attrName)
+            val options = if (entry.selectionOptions.isNotEmpty()) entry.selectionOptions
+            else listOf(c.OPTION__ENABLED to "Enabled", c.OPTION__DISABLED to "Disabled")
+            currentValues = listOf(current)
+            labels = options.map { (value, name) ->
+                if (value == current) "✓ $name" else "  $name"
+            }
+        }
+
+        val screen = Ui.screen(activity, entry.displayName)
+        screen.addButtons(labels)
+        controller.showScreen(screen)
+        return null
+    }
+
+    override fun onResult(index: Int): Destination {
+        val c = Settings.Const
+        if (index == Ui.RET_CODE_BACK) return Destination(SettingsMenuView::class.java)
+
+        if (entry.type == c.TYPE__MULTISELECT) {
+            val current = controller.settings.getValue<List<String>>(attrName).toMutableList()
+            val value = entry.selectionOptions[index].first
+            if (value in current) current.remove(value) else current.add(value)
+            controller.settings.setValue(attrName, current)
+        } else {
+            val value = if (entry.selectionOptions.isNotEmpty()) entry.selectionOptions[index].first
+            else if (index == 0) c.OPTION__ENABLED else c.OPTION__DISABLED
+            controller.settings.setValue(attrName, value)
+        }
+        return Destination(SettingsMenuView::class.java)
+    }
+}
+
+/** Upstream VersionView: app version + git commit. */
+class VersionView : View() {
+
+    override fun run(activity: Activity): Destination? {
+        val screen = Ui.screen(activity, "Version")
+        screen.addText("SeedSigner v0.0.1 (Android port)")
+        screen.addText("Experimental release — not for production use")
+        screen.addButtons(listOf("Back"))
+        controller.showScreen(screen)
+        return null
+    }
+
+    override fun onResult(index: Int): Destination =
+        Destination(SettingsMenuView::class.java)
+}

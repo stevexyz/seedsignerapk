@@ -33,7 +33,7 @@ Any Android phone with a camera. For maximum security use a dedicated phone with
 ## Install
 
 1. Build the APK ([docs/build_instructions.md](docs/build_instructions.md)) or download a release and verify it.
-2. `adb install seedsigner-android.apk` (or open the APK on the phone).
+2. `adb install app/build/outputs/apk/debug/app-debug.apk` (or open the APK on the phone).
 3. Grant the camera permission — it is the app's only permission.
 
 ## Documentation
@@ -54,4 +54,4 @@ Any Android phone with a camera. For maximum security use a dedicated phone with
 
 ## Status
 
-**[Pre-development]** — documentation complete, no app code yet. Next: `core` module per the roadmap v0.0.
+**[v0.1 code complete]** — `core` (crypto, PSBT, UR2, vendored ZXing) and the `app` shell (scan, load seed, xpub export, PSBT sign flow, settings) are built and unit-tested; crypto is byte-identical to upstream (differential crosschecks in `tools/`). On-device end-to-end test pending; next milestone: v0.2 (seed creation) per [docs/feature_roadmap.md](docs/feature_roadmap.md).

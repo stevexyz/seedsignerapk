@@ -52,6 +52,14 @@ tasks.register<JavaExec>("crosscheck-qr") {
         configurations.getByName("testRuntimeClasspath")
 }
 
+// PSBT parser differential-testing harness, driven by tools/crosscheck_psbt_parser.py (spec.md §3b).
+tasks.register<JavaExec>("crosscheck-psbt-parser") {
+    dependsOn("compileKotlin", "compileTestKotlin")
+    mainClass.set("com.seedsigner.core.psbt.CrosscheckPsbtParserKt")
+    classpath = sourceSets.main.get().output + sourceSets.test.get().output +
+        configurations.getByName("testRuntimeClasspath")
+}
+
 // UR crypto-payload CBOR differential-testing harness, driven by tools/crosscheck_urtypes.py (spec.md §3b).
 tasks.register<JavaExec>("crosscheck-urtypes") {
     dependsOn("compileKotlin", "compileTestKotlin")

@@ -5,6 +5,7 @@ import android.util.Log
 import com.seedsigner.app.views.MainMenuView
 import com.seedsigner.app.views.OpeningSplashView
 import com.seedsigner.core.psbt.Psbt
+import com.seedsigner.core.psbt.PsbtParser
 import com.seedsigner.app.models.Seed
 import com.seedsigner.app.models.SeedStorage
 import com.seedsigner.app.models.Settings
@@ -35,6 +36,10 @@ class Controller private constructor() {
     // Working flow state (wiped on Home, per upstream)
     var psbt: Psbt? = null
     var psbtSeed: Seed? = null
+    var psbtParser: PsbtParser? = null
+    // v0.3: the user-supplied multisig wallet descriptor (typed when the
+    // descriptor model lands); null until then.
+    var multisigWalletDescriptor: Any? = null
     var resumeMainFlow: String? = null
 
     // Flow constants (upstream Controller.FLOW__*)
@@ -88,6 +93,8 @@ class Controller private constructor() {
             resumeMainFlow = null
             psbt = null
             psbtSeed = null
+            psbtParser = null
+            multisigWalletDescriptor = null
         }
 
         Log.i("Controller", "back_stack: ${backStack.map { it.ViewCls?.simpleName }}")

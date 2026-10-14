@@ -28,6 +28,14 @@ object Bip32 {
 
         val isPrivate get() = privateKey != null
 
+        /** 1:1 port of embit `HDKey.my_fingerprint`: hash160 of our own pubkey, first 4 bytes. */
+        val myFingerprint: Int
+            get() {
+                val h = Hashes.hash160(publicKey)
+                return ((h[0].toInt() and 0xff) shl 24) or ((h[1].toInt() and 0xff) shl 16) or
+                       ((h[2].toInt() and 0xff) shl 8) or (h[3].toInt() and 0xff)
+            }
+
         /** Public-only view of this key (same public key, no private material). */
         fun toPublic(): HDKey =
             HDKey(version, depth, fingerprint, childNumber, chainCode, null, publicKey)
@@ -75,7 +83,22 @@ object Bip32 {
         }
 
         companion object {
-            fun fromSeed(seed: ByteArray, version: Int = Networks.MAINNET.versions["xprv"]!!): HDKey {
+            /**
+         * 1:1 port of embit `HDKey(pubkey_bytes)`: public-only master key with a
+         * zero chain code. Used for PSBT global xpubs, which are bare 33-byte keys.
+         */
+        fun fromPublicKey(publicKey: ByteArray, version: Int = Networks.MAINNET.versions["xpub"]!!): HDKey =
+            HDKey(
+                version = version,
+                depth = 0,
+                fingerprint = 0,
+                childNumber = 0,
+                chainCode = ByteArray(32),
+                privateKey = null,
+                publicKey = publicKey,
+            )
+
+        fun fromSeed(seed: ByteArray, version: Int = Networks.MAINNET.versions["xprv"]!!): HDKey {
                 val i = Hashes.hmacSha512("Bitcoin seed".toByteArray(Charsets.UTF_8), seed)
                 val il = i.copyOfRange(0, 32)
                 val ir = i.copyOfRange(32, 64)
@@ -92,8 +115,10 @@ object Bip32 {
                 )
             }
 
-            fun parse(serialized: String): HDKey {
-                val payload = Base58.decodeCheck(serialized)
+            fun parse(serialized: String): HDKey = parseBytes(Base58.decodeCheck(serialized))
+
+            /** Parse a 78-byte BIP-32 serialization payload (post-version, raw). */
+            fun parseBytes(payload: ByteArray): HDKey {
                 require(payload.size == 78) { "invalid key length" }
                 val version = ((payload[0].toInt() and 0xff) shl 24) or
                     ((payload[1].toInt() and 0xff) shl 16) or
@@ -170,6 +195,22 @@ object Bip32 {
             privateKey = null,
             publicKey = childPub.toBytes(),
         )
+    }
+
+    /** 1:1 port of embit `HDKey.child(index)`: ckdPriv/ckdPub by key type. */
+    fun child(key: HDKey, index: Int): HDKey =
+        if (key.isPrivate) ckdPriv(key, index) else ckdPub(key, index)
+
+    /** 1:1 port of embit `bip32.path_to_str(path)`. */
+    fun pathToStr(path: List<Int>, fingerprint: ByteArray? = null): String {
+        val sb = StringBuilder(
+            if (fingerprint == null) "m"
+            else fingerprint.joinToString("") { "%02x".format(it) }
+        )
+        for (el in path) {
+            sb.append(if (el < 0) "/%dh".format(el and 0x7FFFFFFF) else "/$el")
+        }
+        return sb.toString()
     }
 
     /**

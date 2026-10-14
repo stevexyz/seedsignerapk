@@ -13,6 +13,7 @@ import com.seedsigner.app.Destination
 import com.seedsigner.app.Ui
 import com.seedsigner.app.View
 import com.seedsigner.app.models.Seed
+import com.seedsigner.app.models.mapNetworkToEmbit
 import com.seedsigner.app.models.Settings
 
 /**
@@ -105,6 +106,19 @@ class SeedOptionsView : View() {
         val seed = controller.storage.seeds[index]
         val network = controller.settings.getValue<String>(Settings.Const.SETTING__NETWORK)
         val fp = seed.getFingerprint(network)
+
+        // A freshly loaded seed that matches a pending PSBT resumes the
+        // signing flow directly (upstream SeedOptionsView.run).
+        controller.psbt?.let { psbt ->
+            val net = com.seedsigner.core.crypto.Networks.fromName(mapNetworkToEmbit(network))
+            if (com.seedsigner.core.psbt.PsbtParser.hasMatchingInputFingerprint(psbt, seed.seedBytes, net)) {
+                if (controller.resumeMainFlow == com.seedsigner.app.Controller.Flow.PSBT) {
+                    controller.resumeMainFlow = null
+                    controller.psbtSeed = seed
+                    return Destination(PSBTOverviewView::class.java, skipCurrentView = true)
+                }
+            }
+        }
 
         val screen = Ui.screen(activity, "Seed $fp")
         screen.addButtons(listOf("Export xpubs", "BIP-85 child seeds", "Remove seed"))

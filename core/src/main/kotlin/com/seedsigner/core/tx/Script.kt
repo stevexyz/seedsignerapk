@@ -78,6 +78,9 @@ class Script(var data: ByteArray) {
         fun p2wpkh(pubkey: ByteArray): Script =
             Script(byteArrayOf(0x00, 0x14) + Hashes.hash160(pubkey))
 
+        fun p2tr(pubkey: ByteArray): Script =
+            Script(byteArrayOf(0x51, 0x20) + pubkey.copyOfRange(0, 32))
+
         fun p2wsh(script: ByteArray): Script =
             Script(byteArrayOf(0x00, 0x20) + Hashes.sha256(script))
 

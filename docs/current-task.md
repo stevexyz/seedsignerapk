@@ -1,6 +1,28 @@
 # Current Task
 
-**Status: [in progress] v0.1 — chunks A–E done and building; PSBT sign flow (Chunk F) next.**
+**Status: [in progress] v0.1 — all six code chunks (A–F) done and building; Chunk G (CI + docs + commit) next.**
+
+## Chunk F — PSBT sign flow [in progress: code done, device test pending]
+
+Core: `PsbtParser.kt` — full 1:1 port of upstream `psbt_parser.py` (policy
+extraction, fingerprint/derivation verification, change detection, fee math,
+OP_RETURN, forged-claim rejection). Differential: `tools/crosscheck_psbt_parser.py`
++ `:core:crosscheck-psbt-parser` → **34/34 cases field-for-field identical** to
+the upstream `PSBTParser` (all 7 script types × receive/self-transfer/full-spend,
+2-input, taproot, OP_RETURN, 5 forged-claim / malformed exception classes).
+
+App: `PsbtViews.kt` — all 21 upstream PSBT views (select seed → overview →
+warnings → math → address/change details → OP_RETURN → finalize → signed QR),
+plus `ErrorView`, scan routing (`crypto-psbt` → sign flow, `crypto-hdkey` →
+pending seed → finalize), and the `SeedOptionsView` resume hook (newly loaded
+seed that matches the pending PSBT jumps straight into the overview).
+
+Known scope deferrals (documented in the code):
+
+| Item | Status |
+| ---- | ------ |
+| Multisig descriptor loading + change verification (`LoadMultisigWalletDescriptorView`) | v0.3 per roadmap; the button exists and reports the deferral |
+| PSBT parse behind a loading screen (upstream runs it in a thread) | parse is inline; fast on modern hardware |
 
 **Bug found in E:** `Networks.fromName` only accepted "mainnet" while `mapNetworkToEmbit` returns "main" → every `Seed.getFingerprint`/`getXpub` call would have thrown at runtime. Fixed in `core` (`fromName` now accepts both). Caught by the new `:app:testDebugUnitTest` (first app-module unit tests).
 

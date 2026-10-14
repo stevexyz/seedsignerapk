@@ -44,17 +44,39 @@ class DerivationPath(val fingerprint: ByteArray, val derivation: List<Int>) {
     override fun hashCode() = fingerprint.contentHashCode() * 31 + derivation.hashCode()
 }
 
+/**
+ * BIP-174 master_fingerprint encoding: the first 4 bytes of the hash160 in their
+ * natural order, which is the big-endian encoding of the int value.
+ */
+fun intToBe4(v: Int): ByteArray = byteArrayOf(
+    ((v ushr 24) and 0xFF).toByte(),
+    ((v ushr 16) and 0xFF).toByte(),
+    ((v ushr 8) and 0xFF).toByte(),
+    (v and 0xFF).toByte()
+)
+
 fun intToLe4(v: Int): ByteArray = byteArrayOf(
     (v and 0xFF).toByte(), ((v ushr 8) and 0xFF).toByte(),
     ((v ushr 16) and 0xFF).toByte(), ((v ushr 24) and 0xFF).toByte()
 )
+
+/**
+ * Common read surface for an input or output scope, used by the parser
+ * (upstream `_get_policy` accepts either InputScope or OutputScope).
+ */
+interface PsbtScope {
+    val witnessScript: Script?
+    val redeemScript: Script?
+    val bip32Derivations: MutableMap<ByteArray, DerivationPath>
+    val taprootBip32Derivations: MutableMap<ByteArray, Pair<List<ByteArray>, DerivationPath>>
+}
 
 class InputScope(
     var txid: ByteArray? = null,          // internal order
     var vout: Long? = null,
     var sequence: Long? = null,
     val compress: Int = CompressMode.KEEP_ALL,
-) {
+) : PsbtScope {
     val unknown = LinkedHashMap<ByteArray, ByteArray>()
     var nonWitnessUtxo: Transaction? = null
     var witnessUtxo: TransactionOutput? = null
@@ -63,10 +85,10 @@ class InputScope(
     var _verified = false
     val partialSigs = LinkedHashMap<ByteArray, ByteArray>()   // 33-byte pubkey -> sig+sighash
     var sighashType: Int? = null
-    var redeemScript: Script? = null
-    var witnessScript: Script? = null
-    val bip32Derivations = LinkedHashMap<ByteArray, DerivationPath>()
-    val taprootBip32Derivations = LinkedHashMap<ByteArray, Pair<List<ByteArray>, DerivationPath>>()
+    override var redeemScript: Script? = null
+    override var witnessScript: Script? = null
+    override val bip32Derivations = LinkedHashMap<ByteArray, DerivationPath>()
+    override val taprootBip32Derivations = LinkedHashMap<ByteArray, Pair<List<ByteArray>, DerivationPath>>()
     var taprootInternalKey: ByteArray? = null    // 32-byte x-only
     var taprootMerkleRoot: ByteArray? = null
     val taprootSigs = LinkedHashMap<String, ByteArray>()      // key = hex(xonly|leaf)
@@ -294,12 +316,12 @@ class OutputScope(
     var value: Long? = null,
     var scriptPubkey: Script? = null,
     val compress: Int = CompressMode.KEEP_ALL,
-) {
+) : PsbtScope {
     val unknown = LinkedHashMap<ByteArray, ByteArray>()
-    var redeemScript: Script? = null
-    var witnessScript: Script? = null
-    val bip32Derivations = LinkedHashMap<ByteArray, DerivationPath>()
-    val taprootBip32Derivations = LinkedHashMap<ByteArray, Pair<List<ByteArray>, DerivationPath>>()
+    override var redeemScript: Script? = null
+    override var witnessScript: Script? = null
+    override val bip32Derivations = LinkedHashMap<ByteArray, DerivationPath>()
+    override val taprootBip32Derivations = LinkedHashMap<ByteArray, Pair<List<ByteArray>, DerivationPath>>()
     var taprootInternalKey: ByteArray? = null
 
     fun readValue(stream: ByteArray, pos: Int, key: ByteArray): Int {

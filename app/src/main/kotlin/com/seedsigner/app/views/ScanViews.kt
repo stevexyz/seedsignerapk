@@ -100,13 +100,55 @@ class ScanView : View() {
 }
 
 /**
- * What we decoded: type + payload summary. Flow-specific interpretation
- * (PSBT sign flow, SeedQR import) lands in the chunks that own them.
+ * Upstream ScanView result routing (scan_views.py): the decoded UR type
+ * decides the next step.
+ *   crypto-psbt  -> load it as the working PSBT, pick a signing seed
+ *   crypto-hdkey -> BIP-39 SeedQR: becomes the pending seed, finalize it
+ *   anything else -> show what we got
  */
 class ScanResultView : View() {
 
     override fun run(activity: Activity): Destination? {
         val ur = viewArgs["ur"] as com.seedsigner.core.qr.ur2.UR
+
+        when (ur.type) {
+            "crypto-psbt" -> {
+                val psbt = try {
+                    com.seedsigner.core.psbt.Psbt.parse(ur.cbor)
+                } catch (e: Exception) {
+                    null
+                }
+                return if (psbt == null) {
+                    Destination(ErrorView::class.java,
+                        viewArgs = mapOf(
+                            "title" to "Error",
+                            "headline" to "Invalid PSBT",
+                            "text" to "The scanned PSBT could not be parsed."
+                        ))
+                } else {
+                    controller.psbt = psbt
+                    controller.psbtParser = null
+                    Destination(PSBTSelectSeedView::class.java, skipCurrentView = true)
+                }
+            }
+            "crypto-hdkey" -> {
+                val words = String(ur.cbor, Charsets.UTF_8).trim().split(" ")
+                return if (words.size != 12 && words.size != 24 || !controller.storage.validateMnemonic(words)) {
+                    Destination(ErrorView::class.java,
+                        viewArgs = mapOf(
+                            "title" to "Error",
+                            "headline" to "Invalid seed",
+                            "text" to "The scanned seed QR is not a valid BIP-39 mnemonic."
+                        ))
+                } else {
+                    // A freshly-scanned seed is pending until finalized
+                    // (passphrase step).
+                    controller.storage.setPendingSeed(com.seedsigner.app.models.Seed(mnemonic = words))
+                    Destination(SeedFinalizeView::class.java, skipCurrentView = true)
+                }
+            }
+        }
+
         val screen = Ui.screen(activity, "Scanned")
         screen.addText(ur.type, 22f)
         screen.addText("${ur.cbor.size} bytes of payload", 14f)

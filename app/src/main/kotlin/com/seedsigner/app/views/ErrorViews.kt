@@ -26,6 +26,28 @@ class NotYetImplementedView : View() {
 }
 
 /**
+ * Upstream ErrorView (view.py): a generic titled error screen; OK goes
+ * back. viewArgs: title, headline, text.
+ */
+class ErrorView : View() {
+
+    override fun run(activity: Activity): Destination? {
+        val title = (viewArgs["title"] as? String) ?: "Error"
+        val headline = (viewArgs["headline"] as? String) ?: ""
+        val text = (viewArgs["text"] as? String) ?: ""
+        val screen = Ui.screen(activity, title)
+        if (headline.isNotEmpty()) screen.addText(headline, 20f, 0xFFFFB4B4.toInt())
+        if (text.isNotEmpty()) screen.addText(text, 15f)
+        screen.addButtons(listOf("Back"))
+        controller.showScreen(screen)
+        return null
+    }
+
+    override fun onResult(index: Int): Destination =
+        Destination(BackStackView::class.java, skipCurrentView = true)
+}
+
+/**
  * Upstream UnhandledExceptionView: debugging info (exception type,
  * file:line, message) shown to the user with a restart suggestion.
  */

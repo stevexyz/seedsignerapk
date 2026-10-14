@@ -60,6 +60,14 @@ tasks.register<JavaExec>("crosscheck-psbt-parser") {
         configurations.getByName("testRuntimeClasspath")
 }
 
+// Mnemonic-generation differential-testing harness, driven by tools/crosscheck_mnemonic_gen.py (spec.md §3b).
+tasks.register<JavaExec>("crosscheck-mnemonic-gen") {
+    dependsOn("compileKotlin", "compileTestKotlin")
+    mainClass.set("com.seedsigner.core.crypto.CrosscheckMnemonicGenKt")
+    classpath = sourceSets.main.get().output + sourceSets.test.get().output +
+        configurations.getByName("testRuntimeClasspath")
+}
+
 // UR crypto-payload CBOR differential-testing harness, driven by tools/crosscheck_urtypes.py (spec.md §3b).
 tasks.register<JavaExec>("crosscheck-urtypes") {
     dependsOn("compileKotlin", "compileTestKotlin")

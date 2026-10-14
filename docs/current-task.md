@@ -1,6 +1,20 @@
 # Current Task
 
-**Status: [in progress] v0.1 — all seven code chunks (A–G) done, built, and committed. Remaining: on-device end-to-end test (needs the user's phone), then v0.2.**
+**Status: [in progress] v0.2 — seed creation (upstream Tools menu: dice, image entropy, calc final word) + generated-words backup flow. v0.1 remains pending its on-device E2E test.**
+
+## v0.2 chunk plan (scope checked against `seedsigner_orig` this session)
+
+| Chunk | Scope | State |
+| ----- | ----- | ----- |
+| A | `core`: `MnemonicGeneration.kt` 1:1 port of `helpers/mnemonic_generation.py` (dice 50/99 rolls, coin flips 128/256, bytes, checksum w/ 11/23-word `0000` injection, partial final word) + differential crosscheck | **in progress** |
+| B | Views: real `ToolsMenuView` (Image/Dice/CalcFinalWord; Address* stay v0.3 stubs), dice length+entry, calc-final-word 4 views, `SeedWordsWarningView`/`SeedWordsView` (4/page), `SeedWordsBackupTestPromptView`/`SeedWordsBackupTestView` (4-option word quiz); wire pending-seed path: entropy → words → quiz → `SeedFinalizeView` | not started |
+| C | Image entropy: `CameraScanner` frame-pool mode (flat-frame rejection on Y plane) + single full-res capture; sha256 chain (device id + uptime + preview frames + final frame) → 16/32 bytes → mnemonic. PIL autocontrast/resize is presentation-only upstream → skipped (documented) | not started |
+| D | Docs + commit | not started |
+
+Deferrals: SeedQR (byteword QR) and CompactSeedQR (dot grid) import stay out of v0.2 — the dot grid needs custom image processing (upstream `decode_qr.py`); UR `crypto-hdkey` scan import already works since v0.1. BIP-85 child seeds (also a consumer of the words/quiz views) stay v0.3.
+
+## v0.1 closeout (done, device E2E pending user's phone)
+
 
 ## Chunk F — PSBT sign flow [done: code committed, device test pending]
 

@@ -95,6 +95,11 @@ object Bip39 {
         return entropy
     }
 
+    /** Wordlist index of a (NFKD-normalized) word; throws on unknown words. */
+    @JvmStatic
+    fun wordIndex(word: String): Int =
+        WORD_INDEX[normalize(word)] ?: throw IllegalArgumentException("unknown BIP39 word: $word")
+
     /** BIP39 seed: PBKDF2-HMAC-SHA512, 2048 iterations, salt "mnemonic"+passphrase (NFKD-normalized). */
     @JvmStatic
     fun mnemonicToSeed(mnemonic: String, passphrase: String = ""): ByteArray {

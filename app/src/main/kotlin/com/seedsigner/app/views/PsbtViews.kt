@@ -342,13 +342,8 @@ class PSBTChangeDetailsView : View() {
 
         val networkStr = settings.getValue<String>(Settings.Const.SETTING__NETWORK)
         val seedFingerprint = controller.psbtSeed?.getFingerprint(networkStr) ?: ""
-        val derivationPath = Bip32.pathToStr(
-            verifiedDerivationPath,
-            controller.psbtParser!!.root!!.fingerprintOfChild().let {
-                // pathToStr expects the 4-byte big-endian fingerprint
-                intToBe4Bytes(it)
-            }
-        )
+        // Upstream shows the bare path (no fingerprint prefix) here.
+        val derivationPath = Bip32.pathToStr(verifiedDerivationPath)
 
         val isChangeAddrVerified = !p.isMultisig || controller.multisigWalletDescriptor != null
 
@@ -391,14 +386,6 @@ class PSBTChangeDetailsView : View() {
         }
     }
 }
-
-/** 4-byte big-endian encoding of a BIP-32 fingerprint int. */
-private fun intToBe4Bytes(i: Int): ByteArray = byteArrayOf(
-    ((i shr 24) and 0xFF).toByte(),
-    ((i shr 16) and 0xFF).toByte(),
-    ((i shr 8) and 0xFF).toByte(),
-    (i and 0xFF).toByte()
-)
 
 /**
  * Upstream PSBTSeedCannotSignView: the seed can't sign any input. Not an

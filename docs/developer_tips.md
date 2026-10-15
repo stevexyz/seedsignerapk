@@ -2,7 +2,13 @@
 
 ### Quickly generate a new seed to test with
 
-Generate a new 12- or 24-word seed via [https://iancoleman.io/bip39/](https://iancoleman.io/bip39/).
+Generate a new 12- or 24-word seed offline, e.g. with the repo's own generator (the same code the app's dice flow uses):
+
+```python
+~/toolchain/venv/bin/python -c "import embit.bip39 as b; print(b.mnemonic_from_bytes(__import__('os').urandom(16)))"
+```
+
+(Any offline BIP39 generator works. Do not use online generators for seeds you may later treat seriously.)
 
 Convert the seed phrase to the numeric SeedQR encoding: each BIP39 word becomes a four-digit, zero-padded index into the BIP39 English wordlist, concatenated. You can do it quickly in any language, e.g. Python:
 
@@ -26,7 +32,7 @@ Start the app, choose "Load seed" from a QR code, and scan the QR with the phone
 
 ```bash
 ./gradlew installDebug
-adb shell am start -n <application-id>/.MainActivity
+adb shell am start -n com.seedsigner/.MainActivity
 ```
 
 ### Viewing app logs
@@ -40,4 +46,4 @@ See [debug_crash.md](debug_crash.md) for crash triage.
 ## Advanced notes
 
 * Keep test seeds obviously fake (generate them fresh, testnet only).
-* The app is meant to be stateless: seeds must not survive app restart. Verify this as a test: load a seed, force-stop the app (`adb shell am force-stop <application-id>`), relaunch — the seed must be gone.
+* The app is meant to be stateless: seeds must not survive app restart. Verify this as a test: load a seed, force-stop the app (`adb shell am force-stop com.seedsigner`), relaunch — the seed must be gone.

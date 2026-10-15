@@ -18,7 +18,7 @@ import java.util.Base64
  */
 fun main(args: Array<String>) {
     val inPath = args[0]
-    val outPath = args[1]
+    val outPath = if (args.size > 1) args[1] else System.getProperty("java.io.tmpdir") + "/psbt_parser_out.tsv"
     val lines = File(inPath).readLines().filter { it.isNotBlank() }
     var failures = 0
 

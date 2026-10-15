@@ -211,14 +211,14 @@ class SeedAddressVerificationView(
         if (!isMultisig) {
             if (seed == null) throw Exception("Can't validate a single sig addr without specifying a seed")
         }
-        if (isMultisig) {
-            // Multisig brute-forcing needs the wallet descriptor model
-            // (upstream embit_utils.get_multisig_address); not ported yet.
+        val descriptor = controller.multisigWalletDescriptor as? com.seedsigner.core.descriptor.Descriptor
+        if (isMultisig && descriptor == null) {
+            // Upstream requires the descriptor to have been loaded first.
             return Destination(ErrorView::class.java,
                 viewArgs = mapOf(
-                    "title" to "Not yet supported",
-                    "headline" to "Multisig address verification",
-                    "text" to "The wallet descriptor model hasn't been ported yet."
+                    "title" to "Error",
+                    "headline" to "Missing descriptor",
+                    "text" to "Load the multisig wallet descriptor first."
                 ))
         }
 
@@ -239,22 +239,32 @@ class SeedAddressVerificationView(
         val embitNetwork = Networks.fromName(AddrCodes.netToCore.getValue(network))
 
         // The brute-force worker (upstream BruteForceAddressVerificationThread).
-        val xpub = Bip32.derive(
-            Bip32.HDKey.fromSeed(seed!!.seedBytes, version = embitNetwork.versions["xprv"]!!),
-            derivationPath
-        )
+        val xpub = if (descriptor == null) {
+            Bip32.derive(
+                Bip32.HDKey.fromSeed(seed!!.seedBytes, version = embitNetwork.versions["xprv"]!!),
+                derivationPath
+            )
+        } else {
+            null
+        }
         val coreScript = AddrCodes.scriptToCore.getValue(scriptType)
         val target = address
         val xpubRef = xpub
+        val descriptorRef = descriptor
 
         worker = thread(start = true) {
             while (!stopFlag.get()) {
                 val i = currentIndex.get()
-                val receive = xpubRef?.let { Address.singleSigAddress(it, coreScript, i.toInt(), false, embitNetwork) }
+                val (receive, change) = if (descriptorRef != null) {
+                    com.seedsigner.core.descriptor.getMultisigAddress(descriptorRef, i.toInt(), false, embitNetwork) to
+                        com.seedsigner.core.descriptor.getMultisigAddress(descriptorRef, i.toInt(), true, embitNetwork)
+                } else {
+                    Address.singleSigAddress(xpubRef!!, coreScript, i.toInt(), false, embitNetwork) to
+                        Address.singleSigAddress(xpubRef, coreScript, i.toInt(), true, embitNetwork)
+                }
                 if (receive == target) {
                     verifiedIndex.set(i); verifiedIsChange.set(0); stopFlag.set(true); break
                 }
-                val change = xpubRef?.let { Address.singleSigAddress(it, coreScript, i.toInt(), true, embitNetwork) }
                 if (change == target) {
                     verifiedIndex.set(i); verifiedIsChange.set(1); stopFlag.set(true); break
                 }

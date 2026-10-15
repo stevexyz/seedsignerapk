@@ -171,6 +171,16 @@ class ScanResultView : View() {
                 ))
         }
 
+        // A wallet descriptor (upstream DecodeQR WALLET__* types): generic
+        // sortedmulti text, a multisig setup file, or a Specter QR.
+        if (DescriptorQr.isGeneric(raw) || DescriptorQr.isConfigFile(raw) || DescriptorQr.isSpecter(raw)) {
+            // The descriptor scanner owns the single-frame handling and the
+            // multi-part Specter accumulation; for single-frame input it
+            // completes in one scan.
+            return Destination(ScanWalletDescriptorView::class.java,
+                viewArgs = mapOf("fresh" to true), skipCurrentView = true)
+        }
+
         // A Bitcoin address (upstream BitcoinAddressQrDecoder).
         val addrTriple = com.seedsigner.core.crypto.AddressType.detectWithAddress(raw)
         if (addrTriple != null) {

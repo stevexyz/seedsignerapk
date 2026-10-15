@@ -99,11 +99,14 @@ class ToolsAddressExplorerAddressTypeView(
                 scriptType = scriptType
             )
         }
-        data["derivation_path"] = derivationPath
         if (seed != null) {
+            data["derivation_path"] = derivationPath
             val embitNetwork = Networks.fromName(mapNetworkToEmbit(network))
             val root = Bip32.HDKey.fromSeed(seed.seedBytes, version = embitNetwork.versions["xprv"]!!)
             data["xpub"] = Bip32.derive(root, derivationPath)
+        } else {
+            // Descriptor source (upstream stores the wallet_descriptor).
+            data["wallet_descriptor"] = controller.multisigWalletDescriptor
         }
         controller.addressExplorerData = data
 
@@ -111,7 +114,15 @@ class ToolsAddressExplorerAddressTypeView(
         seed?.let {
             screen.addText("Seed ${it.getFingerprint(network)}", 14f, 0xFF9E9E9E.toInt())
         }
-        screen.addText(derivationPath, 12f, 0xFF9E9E9E.toInt())
+        if (seed == null) {
+            val descriptor = controller.multisigWalletDescriptor as? com.seedsigner.core.descriptor.Descriptor
+            descriptor?.let {
+                val (m, n) = com.seedsigner.core.descriptor.getMultisigPolicy(it)
+                screen.addText("$m / $n multisig", 14f, 0xFF9E9E9E.toInt())
+            }
+        } else {
+            screen.addText(derivationPath, 12f, 0xFF9E9E9E.toInt())
+        }
         screen.addButtons(listOf("Receive addresses", "Change addresses"))
         controller.showScreen(screen)
         return null
@@ -165,17 +176,17 @@ class ToolsAddressExplorerAddressListView(
             pageAddresses = cached.subList(startIndex, startIndex + ADDRS_PER_SCREEN).toList()
         } else {
             val xpub = data["xpub"] as? com.seedsigner.core.crypto.Bip32.HDKey
-            val scriptType = data["script_type"] as String
-            if (xpub == null) {
-                // Descriptor-based sources aren't ported yet.
+            val descriptor = data["wallet_descriptor"] as? com.seedsigner.core.descriptor.Descriptor
+            val scriptType = data["script_type"] as? String ?: ""
+            if (xpub == null && descriptor == null) {
                 return Destination(ErrorView::class.java,
                     viewArgs = mapOf(
-                        "title" to "Not yet supported",
-                        "headline" to "Descriptor address explorer",
-                        "text" to "The wallet descriptor model hasn't been ported yet."
+                        "title" to "Error",
+                        "headline" to "Missing explorer source",
+                        "text" to "Load a seed or a wallet descriptor first."
                     ))
             }
-            if (scriptType == Settings.Const.CUSTOM_DERIVATION) {
+            if (xpub != null && scriptType == Settings.Const.CUSTOM_DERIVATION) {
                 // Upstream raises the same error.
                 return Destination(ErrorView::class.java,
                     viewArgs = mapOf(
@@ -186,10 +197,14 @@ class ToolsAddressExplorerAddressListView(
             }
             val network = data["network"] as String
             val embitNetwork = Networks.fromName(mapNetworkToEmbit(network))
-            val coreScript = AddrCodes.scriptToCore.getValue(scriptType)
+            val coreScript = if (scriptType.isNotEmpty()) AddrCodes.scriptToCore.getValue(scriptType) else ""
             val list = cached ?: mutableListOf<String>().also { data[storageKey] = it }
             pageAddresses = (startIndex until startIndex + ADDRS_PER_SCREEN).map { i ->
-                val addr = Address.singleSigAddress(xpub, coreScript, i, isChange, embitNetwork)
+                val addr = if (descriptor != null) {
+                    com.seedsigner.core.descriptor.getMultisigAddress(descriptor, i, isChange, embitNetwork)
+                } else {
+                    Address.singleSigAddress(xpub!!, coreScript, i, isChange, embitNetwork)
+                }
                 list.add(addr)
                 addr
             }

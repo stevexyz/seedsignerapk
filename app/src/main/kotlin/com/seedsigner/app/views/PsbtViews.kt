@@ -2,6 +2,7 @@ package com.seedsigner.app.views
 
 import android.app.Activity
 import com.seedsigner.app.BackStackView
+import com.seedsigner.app.Controller
 import com.seedsigner.app.Destination
 import com.seedsigner.app.Ui
 import com.seedsigner.app.View
@@ -347,7 +348,23 @@ class PSBTChangeDetailsView : View() {
         // Upstream shows the bare path (no fingerprint prefix) here.
         val derivationPath = Bip32.pathToStr(verifiedDerivationPath)
 
-        val isChangeAddrVerified = !p.isMultisig || controller.multisigWalletDescriptor != null
+        // Multisig is verified here rather than during the initial parse
+        // because the descriptor only arrives mid-flow (upstream comment).
+        val descriptor = controller.multisigWalletDescriptor as? com.seedsigner.core.descriptor.Descriptor
+        var isChangeAddrVerified = !p.isMultisig
+        if (p.isMultisig) {
+            if (descriptor != null) {
+                isChangeAddrVerified = p.verifyMultisigOutput(descriptor, changeAddressNum)
+                if (!isChangeAddrVerified) {
+                    // Verification failed, so this psbt is done.
+                    return Destination(PSBTAddressVerificationFailedView::class.java,
+                        viewArgs = mapOf("isChange" to isChangeDerivationPath),
+                        clearHistory = true)
+                }
+            } else {
+                // Nothing to check against yet: offer to load the descriptor.
+            }
+        }
 
         val screen = Ui.screen(activity, title)
         screen.addText(changeData.address, 18f)
@@ -356,7 +373,7 @@ class PSBTChangeDetailsView : View() {
         screen.addText(derivationPath, 13f, 0xFF9E9E9E.toInt())
         if (isChangeAddrVerified) screen.addText("Address verified from your seed", 14f, 0xFF81C784.toInt())
 
-        val buttons = if (p.isMultisig && controller.multisigWalletDescriptor == null) {
+        val buttons = if (p.isMultisig && descriptor == null) {
             listOf("Verify multisig addr", "Skip verification")
         } else {
             listOf("Next")
@@ -369,10 +386,16 @@ class PSBTChangeDetailsView : View() {
     override fun onResult(index: Int): Destination {
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
         val p = controller.psbtParser!!
-        val isMultisigPending = p.isMultisig && controller.multisigWalletDescriptor == null
+        val descriptor = controller.multisigWalletDescriptor as? com.seedsigner.core.descriptor.Descriptor
+        val isMultisigPending = p.isMultisig && descriptor == null
 
         return when {
             // "Next" (index 0 when no multisig prompt) / "Skip verification" (index 1)
+            isMultisigPending && index == 0 -> {
+                // Load the known-good descriptor (upstream FLOW__PSBT resume).
+                controller.resumeMainFlow = Controller.Flow.PSBT
+                Destination(LoadMultisigWalletDescriptorView::class.java)
+            }
             !isMultisigPending || index == 1 -> {
                 if (changeAddressNum < p.numChangeOutputs - 1) {
                     Destination(PSBTChangeDetailsView::class.java, viewArgs = mapOf("changeAddressNum" to changeAddressNum + 1))

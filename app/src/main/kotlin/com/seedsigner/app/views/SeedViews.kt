@@ -40,6 +40,15 @@ class SeedsMenuView : View() {
     override fun onResult(index: Int): Destination {
         val seeds = controller.storage.seeds
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
+        // A seed picked for single-sig address verification goes straight to
+        // the brute-force verification (upstream SeedSelectSeedView
+        // flow=VERIFY_SINGLESIG_ADDR).
+        if (index < seeds.size && controller.resumeMainFlow == Controller.Flow.VERIFY_SINGLESIG_ADDR) {
+            controller.resumeMainFlow = null
+            controller.addressVerifySeed = seeds[index]
+            return Destination(SeedAddressVerificationView::class.java,
+                viewArgs = mapOf("fresh" to true), skipCurrentView = true)
+        }
         return if (index < seeds.size) {
             Destination(SeedOptionsView::class.java,
                 viewArgs = mapOf("seedIndex" to index))

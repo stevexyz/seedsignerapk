@@ -51,6 +51,11 @@ class Controller private constructor() {
     // derivation_path, message, addr_format, seed, paged_message.
     var signMessageData: MutableMap<String, Any?>? = null
 
+    // Address-verification working state (upstream controller.unverified_address):
+    // address, script_type, network, sig_type, derivation_path, verified_index.
+    var unverifiedAddress: MutableMap<String, Any?>? = null
+    var addressVerifySeed: Seed? = null
+
     var resumeMainFlow: String? = null
 
     // Flow constants (upstream Controller.FLOW__*)
@@ -109,6 +114,8 @@ class Controller private constructor() {
             imageEntropyPreviewFrames = null
             imageEntropyFinalImage = null
             signMessageData = null
+            unverifiedAddress = null
+            addressVerifySeed = null
         }
 
         Log.i("Controller", "back_stack: ${backStack.map { it.ViewCls?.simpleName }}")

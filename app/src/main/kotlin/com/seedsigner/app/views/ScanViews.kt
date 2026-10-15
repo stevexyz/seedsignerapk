@@ -18,12 +18,12 @@ import com.seedsigner.core.qr.ur2.URDecoder
  * Upstream ScanView (scan_views.py): camera up, decode QRs, accumulate UR
  * parts until the payload is complete.
  */
-class ScanView : View() {
+open class ScanView : View() {
 
     private var scanner: CameraScanner? = null
     private val decoder = URDecoder()
     private val seenParts = mutableSetOf<String>()
-    private var decodedUr: UR? = null
+    protected var decodedUr: UR? = null
 
     override fun run(activity: Activity): Destination? {
         if (activity.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -83,7 +83,7 @@ class ScanView : View() {
         }
     }
 
-    private fun stopScanner() {
+    protected fun stopScanner() {
         scanner?.stop()
         scanner = null
     }
@@ -169,6 +169,17 @@ class ScanResultView : View() {
                     "headline" to "Invalid message QR",
                     "text" to "Expected: signmessage {derivation_path} ascii:{message}"
                 ))
+        }
+
+        // A Bitcoin address (upstream BitcoinAddressQrDecoder).
+        val addrTriple = com.seedsigner.core.crypto.AddressType.detectWithAddress(raw)
+        if (addrTriple != null) {
+            return Destination(AddressVerificationStartView::class.java,
+                viewArgs = mapOf(
+                    "address" to addrTriple.first,
+                    "scriptType" to addrTriple.second,
+                    "network" to addrTriple.third
+                ), skipCurrentView = true)
         }
 
         // A SeedQR is a single frame of 48 (12 words) or 96 (24

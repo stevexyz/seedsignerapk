@@ -68,6 +68,14 @@ tasks.register<JavaExec>("crosscheck-message-sign") {
         configurations.getByName("testRuntimeClasspath")
 }
 
+// Address-verification differential-testing harness, driven by tools/crosscheck_address_verification.py (spec.md §3b).
+tasks.register<JavaExec>("crosscheck-address-verification") {
+    dependsOn("compileKotlin", "compileTestKotlin")
+    mainClass.set("com.seedsigner.core.crypto.CrosscheckAddressVerification")
+    classpath = sourceSets.main.get().output + sourceSets.test.get().output +
+        configurations.getByName("testRuntimeClasspath")
+}
+
 // BIP-85 differential-testing harness, driven by tools/crosscheck_bip85.py (spec.md §3b).
 tasks.register<JavaExec>("crosscheck-bip85") {
     dependsOn("compileKotlin", "compileTestKotlin")

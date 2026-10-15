@@ -31,22 +31,23 @@ Binding requirements: [spec.md](spec.md). First real milestone: end-to-end flow 
 * ✅ Seed import via QR: word entry, UR `crypto-hdkey` scan (v0.1), numeric SeedQR format (48/96 digits)
 * ⏳ CompactSeedQR dot-grid import — needs custom dot-pattern image processing; deferred (roadmap item, tracked in current-task.md)
 
-## v0.3 — Verification and utilities (in progress)
+## v0.3 — Verification and utilities (complete)
 
-* ⏳ Address scan and verification
-* ⏳ Full PSBT change-address verification + "full spend" warning (multisig descriptor model)
-* ⏳ Address Explorer
+* ✅ Address scan and verification (`ScanAddressView`, single-sig brute-force thread, nested-segwit sig-type chooser; `:core:crosscheck-address-verification` 83/83)
+* ✅ Full PSBT change-address verification + multisig descriptor model (`core/descriptor/Descriptor.kt`, `:core:crosscheck-descriptor` 96/96 byte-identical; descriptor scan: generic / multisig-setup-file / Specter animated; `PSBTChangeDetailsView` verifies via `verifyMultisigOutput`)
+* ✅ Address Explorer (seed sources + descriptor sources, receive/change pages, per-address QR)
 * ✅ Message signing (`signmessage` QR + seed-menu flow; compact signatures byte-identical to upstream, `:core:crosscheck-message-sign` 36/36)
 * ✅ BIP85 child seeds (39/39 incl. official spec vectors)
 * ✅ Custom derivation paths (xpub export, landed in v0.1 Chunk E)
 
 ## v0.4 — Polish
 
-* Multisig: sign with multiple keys at once
-* Electrum seed support ([upstream doc](../seedsigner_orig/docs/electrum.md))
-* Localization (English first)
-* SettingsQR scanning
-* UI refinements
+* ✅ Electrum seed support (12-word Segwit format, `ElectrumSeed` model + load flow; non-standard seeds excluded from PSBT signing)
+* ✅ SettingsQR scanning (`settings::v1` parse + apply, 1:1 of upstream `Settings.parse_settingsqr`)
+* ✅ Seed backup flow (SeedQR transcribe chain: format → warning → whole QR → zoomed-in zone view → scan-to-confirm; compact SeedQR display via new vendored byte-mode encoder)
+* ⏳ Multisig: sign with multiple keys at once (signing one key per PSBT pass already works; the upstream "multiple cosigner seeds in one pass" UX is the remaining delta)
+* ⏳ Localization (English first — string pass is in place, no i18n framework)
+* ⏳ UI refinements (device E2E on a real phone will drive these)
 
 ## Beyond
 

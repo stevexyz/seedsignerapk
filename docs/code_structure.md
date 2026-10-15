@@ -10,6 +10,7 @@ Two modules, one rule: **`core` never imports Android.**
 | `tx` | transaction + script types (BIP-174 data model, sighash) |
 | `psbt` | parse, validate, sign, plus the `PsbtParser` review layer (policy, change detection, forged-claim rejection) |
 | `qr` | UR2 encode/decode (fountain), the `urtypes` crypto payload builders, vendored ZXing (see `VENDORED.md`) |
+| `descriptor` | basic-multisig wallet descriptors (1:1 of embit's `descriptor` package: `AllowedDerivation`, `Key`, `Multi`/`Sortedmulti`, `Descriptor`, `getMultisigAddress`, `getMultisigPolicy`) |
 
 Everything in `core` is verified byte-identical to upstream per [spec.md §3](spec.md#3-correctness).
 
@@ -21,7 +22,8 @@ Mirrors upstream's Model-View-Controller 1:1, so the port can be audited side by
 - **Screen (View)**: one class per screen, same role as an upstream `View` — renders, handles touch input, decides the next screen. The flow views live in `app/views/` grouped by upstream file (`SeedViews`, `XpubViews`, `PsbtViews`, `ScanViews`, ...).
 - **Controller**: a small singleton router that swaps screens (upstream's `Controller` minus the hardware layer) and holds the working flow state (seeds, working PSBT, back stack).
 - **`Ui` / `QrDisplay`**: screen-building helpers and QR rendering (bitmaps from the `core` encoder).
-- **`models`**: `Settings` (plain file in app-private storage), `Seed` (memory-only), `SeedStorage`, `Derivation`.
+- **`models`**: `Settings` (plain file in app-private storage) + `SettingsQr` (SettingsQR parse), `Seed` (abstract; `Bip39Seed` / `ElectrumSeed`, memory-only), `SeedStorage`, `Derivation`.
+- View files added in v0.3/v0.4: `AddressViews`, `ExplorerViews`, `DescriptorViews`, `MessageSignViews`, `Bip85Views`, `SeedWordsViews`, `SeedBackupViews` (SeedQR transcribe chain + `SeedQrEncoder`).
 - **Camera in**: platform `android.hardware.camera2`; frames go to the `core` decoder.
 - **QR out**: an animated view cycling the UR2 parts (2 s per part, upstream cadence).
 

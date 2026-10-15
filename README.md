@@ -54,4 +54,4 @@ Any Android phone with a camera. For maximum security use a dedicated phone with
 
 ## Status
 
-**[v0.1 code complete]** — `core` (crypto, PSBT, UR2, vendored ZXing) and the `app` shell (scan, load seed, xpub export, PSBT sign flow, settings) are built and unit-tested; crypto is byte-identical to upstream (differential crosschecks in `tools/`). On-device end-to-end test pending; next milestone: v0.2 (seed creation) per [docs/feature_roadmap.md](docs/feature_roadmap.md).
+**[v0.4 feature scope complete]** — `core` (crypto, PSBT, UR2, descriptors, vendored ZXing) and the full `app` (scan, seed load/create/backup, SeedQR transcribe, xpub export, PSBT sign incl. multisig descriptor change verification, message signing, BIP-85, address verification + explorer, Electrum seeds, SettingsQR) are built and unit-tested; crypto is byte-identical to upstream (11 differential crosschecks in `tools/`). On-device end-to-end test pending. See [docs/feature_roadmap.md](docs/feature_roadmap.md) for the item-level status and [docs/current-task.md](docs/current-task.md) for the remaining deltas.

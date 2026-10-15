@@ -1,5 +1,6 @@
 package com.seedsigner.app
 
+import com.seedsigner.app.models.Bip39Seed
 import com.seedsigner.app.models.Seed
 import com.seedsigner.app.models.Settings
 import com.seedsigner.app.models.Derivation
@@ -19,13 +20,13 @@ class XpubTest {
 
     @Test
     fun fingerprint_matches_dice_vector() {
-        val seed = Seed(mnemonic)
+        val seed = Bip39Seed(mnemonic)
         assertEquals("8d9cced8", seed.getFingerprint(Settings.Const.MAINNET))
     }
 
     @Test
     fun bip84_zpub_matches_dice_vector() {
-        val seed = Seed(mnemonic)
+        val seed = Bip39Seed(mnemonic)
         val path = Derivation.standardDerivationPath(
             Settings.Const.MAINNET, Settings.Const.SINGLE_SIG, Settings.Const.NATIVE_SEGWIT
         )
@@ -40,7 +41,7 @@ class XpubTest {
 
     @Test
     fun xpubstring_format_matches_upstream() {
-        val seed = Seed(mnemonic)
+        val seed = Bip39Seed(mnemonic)
         val path = "m/84'/0'/0'"
         val derived = seed.deriveXpub(path, Settings.Const.MAINNET)
         val s = derived.xpubstring(derived.rootFingerprint, path)

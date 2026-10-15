@@ -171,6 +171,12 @@ class ScanResultView : View() {
                 ))
         }
 
+        // A SettingsQR (upstream SettingsQrDecoder: "settings::v1 ...").
+        if (raw.startsWith("settings::")) {
+            return Destination(SettingsIngestSettingsQRView::class.java,
+                viewArgs = mapOf("data" to raw))
+        }
+
         // A wallet descriptor (upstream DecodeQR WALLET__* types): generic
         // sortedmulti text, a multisig setup file, or a Specter QR.
         if (DescriptorQr.isGeneric(raw) || DescriptorQr.isConfigFile(raw) || DescriptorQr.isSpecter(raw)) {

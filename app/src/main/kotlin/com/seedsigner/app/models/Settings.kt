@@ -237,3 +237,79 @@ class Settings {
         }
     }
 }
+
+/**
+ * 1:1 port of upstream `Settings.parse_settingsqr` (models/settings.py):
+ * parses "settings::v1 [name=Foo] attr=value ..." data and returns
+ * (config_name, updated_settings). Unrecognized attrs are ignored (as
+ * upstream does); invalid values raise.
+ */
+object SettingsQr {
+
+    /** Upstream abbreviated-name -> our attr_name (entries without an
+     *  abbreviated_name accept their full name too). */
+    private val abbreviated = mapOf(
+        "lang" to "locale",
+        "wordlist_lang" to "wordlist_language",
+        "persistent" to "persistent_settings",
+        "denom" to "denomination",
+        "sigs" to "sig_types",
+        "scripts" to "script_types",
+        "camera" to "camera_flip",
+        "bip85" to "bip85_child_seeds",
+        "electrum" to "electrum_seeds",
+        "priv_warn" to "privacy_warnings",
+        "dire_warn" to "dire_warnings",
+        "partners" to "partner_logos",
+        "disp_conf" to "display_configuration",
+        "rgb_inv" to "rgb_inverted",
+        "qr_brightness" to "qr_brightness_tips"
+    )
+
+    fun parse(data: String): Pair<String?, Map<String, Any?>> {
+        require(data.startsWith("settings::")) { "Invalid SettingsQR data" }
+        val tokens = data.split(" ")
+        val version = tokens[0].split("::")[1]
+        require(version == "v1") { "Unsupported SettingsQR version: $version" }
+
+        var splitIndex = 1
+        var configName: String? = null
+        if (tokens[1].contains("name=")) {
+            configName = tokens.drop(1).joinToString(" ").split("name=")[1].split(" ")[0].replace("_", " ")
+            splitIndex += 1
+        }
+
+        val updated = mutableMapOf<String, Any?>()
+        for (entry in tokens.drop(splitIndex)) {
+            val eq = entry.indexOf('=')
+            require(eq > 0) { "Invalid SettingsQR entry: $entry" }
+            val abbreviatedName = entry.substring(0, eq)
+            var value: Any = entry.substring(eq + 1)
+
+            require(value != "") { "$abbreviatedName cannot be empty" }
+
+            // Multi-value / integer-ize, like upstream
+            value = when {
+                "," in (value as String) -> value.split(",").map { tok: String -> if (tok.all { it.isDigit() }) tok.toInt() else tok }
+                (value as String).all { it.isDigit() } -> value.toString().toInt()
+                else -> value
+            }
+
+            val attrName = abbreviated[abbreviatedName] ?: abbreviatedName
+            val settingsEntry = Settings().entries.firstOrNull { it.attrName == attrName }
+            if (settingsEntry == null) {
+                // Upstream: ignore unrecognized attributes.
+                continue
+            }
+            @Suppress("UNCHECKED_CAST")
+            val values = if (value is List<*>) value as List<Any> else listOf(value)
+            for (v in values) {
+                if (v !in settingsEntry.selectionOptions.map { it.first }) {
+                    throw Exception("$abbreviatedName = '$v' is not valid")
+                }
+            }
+            updated[attrName] = value
+        }
+        return configName to updated
+    }
+}

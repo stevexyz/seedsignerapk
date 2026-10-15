@@ -138,3 +138,40 @@ class VersionView : View() {
     override fun onResult(index: Int): Destination =
         Destination(SettingsMenuView::class.java)
 }
+
+/**
+ * 1:1 port of upstream SettingsIngestSettingsQRView (settings_views.py:310):
+ * parse a scanned "settings::v1 ..." QR, apply it, show the confirmation.
+ */
+class SettingsIngestSettingsQRView : View() {
+
+    private var data: String = ""
+    private var configName: String? = null
+    private var updatedCount: Int = 0
+    private var statusMessage: String = ""
+
+    override fun run(activity: Activity): Destination? {
+        data = viewArgs["data"] as? String ?: ""
+        // May raise, which bubbles up to the Controller's error screen,
+        // exactly like upstream.
+        val (name, updates) = com.seedsigner.app.models.SettingsQr.parse(data)
+        configName = name
+        updatedCount = updates.size
+        updates.forEach { (k, v) -> controller.settings.setValue(k, v) }
+        controller.settings.save(activity)
+        statusMessage = "Settings saved"
+
+        val screen = Ui.screen(activity, "Settings QR", showBack = false)
+        configName?.let { screen.addText(it, 18f) }
+        screen.addText("$updatedCount setting(s) applied", 16f)
+        screen.addText(statusMessage, 14f, 0xFF9E9E9E.toInt())
+        screen.addButtons(listOf("Done"))
+        controller.showScreen(screen)
+        return null
+    }
+
+    override fun onResult(index: Int): Destination {
+        // Only one exit point upstream.
+        return Destination(MainMenuView::class.java, clearHistory = true)
+    }
+}

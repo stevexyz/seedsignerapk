@@ -60,6 +60,14 @@ tasks.register<JavaExec>("crosscheck-psbt-parser") {
         configurations.getByName("testRuntimeClasspath")
 }
 
+// BIP-85 differential-testing harness, driven by tools/crosscheck_bip85.py (spec.md §3b).
+tasks.register<JavaExec>("crosscheck-bip85") {
+    dependsOn("compileKotlin", "compileTestKotlin")
+    mainClass.set("com.seedsigner.core.crypto.CrosscheckBip85Kt")
+    classpath = sourceSets.main.get().output + sourceSets.test.get().output +
+        configurations.getByName("testRuntimeClasspath")
+}
+
 // Mnemonic-generation differential-testing harness, driven by tools/crosscheck_mnemonic_gen.py (spec.md §3b).
 tasks.register<JavaExec>("crosscheck-mnemonic-gen") {
     dependsOn("compileKotlin", "compileTestKotlin")

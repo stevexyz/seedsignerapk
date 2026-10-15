@@ -285,7 +285,7 @@ class ToolsImageEntropyMnemonicLengthView : View() {
         controller.imageEntropyFinalImage = null
 
         controller.storage.setPendingSeed(Seed(mnemonic = mnemonic))
-        return Destination(SeedWordsWarningView::class.java, viewArgs = mapOf("seed" to null), clearHistory = true)
+        return Destination(SeedWordsWarningView::class.java, viewArgs = mapOf("seed" to null, "bip85ChildIndex" to null, "bip85NumWords" to null), clearHistory = true)
     }
 }
 
@@ -376,7 +376,7 @@ class ToolsDiceEntropyEntryView : View() {
         // Completed: generate the seed from the digit string.
         val mnemonic = MnemonicGeneration.generateMnemonicFromDice(rolls)
         controller.storage.setPendingSeed(Seed(mnemonic = mnemonic))
-        return Destination(SeedWordsWarningView::class.java, viewArgs = mapOf("seed" to null), clearHistory = true)
+        return Destination(SeedWordsWarningView::class.java, viewArgs = mapOf("seed" to null, "bip85ChildIndex" to null, "bip85NumWords" to null), clearHistory = true)
     }
 }
 

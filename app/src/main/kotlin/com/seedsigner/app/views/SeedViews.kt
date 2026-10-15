@@ -135,7 +135,7 @@ class SeedOptionsView : View() {
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
         return when (index) {
             0 -> Destination(SeedExportXpubSigTypeView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
-            1 -> Destination(NotYetImplementedView::class.java, viewArgs = mapOf("feature" to "BIP-85 child seeds"))
+            1 -> Destination(SeedBIP85SelectNumWordsView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
             2 -> Destination(SeedDiscardView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
             else -> Destination(SeedsMenuView::class.java)
         }

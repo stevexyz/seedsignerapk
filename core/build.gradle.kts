@@ -60,6 +60,14 @@ tasks.register<JavaExec>("crosscheck-psbt-parser") {
         configurations.getByName("testRuntimeClasspath")
 }
 
+// Bitcoin signed-message differential-testing harness, driven by tools/crosscheck_message_sign.py (spec.md §3b).
+tasks.register<JavaExec>("crosscheck-message-sign") {
+    dependsOn("compileKotlin", "compileTestKotlin")
+    mainClass.set("com.seedsigner.core.crypto.CrosscheckMessageSignKt")
+    classpath = sourceSets.main.get().output + sourceSets.test.get().output +
+        configurations.getByName("testRuntimeClasspath")
+}
+
 // BIP-85 differential-testing harness, driven by tools/crosscheck_bip85.py (spec.md §3b).
 tasks.register<JavaExec>("crosscheck-bip85") {
     dependsOn("compileKotlin", "compileTestKotlin")

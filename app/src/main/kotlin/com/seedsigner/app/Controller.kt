@@ -47,6 +47,10 @@ class Controller private constructor() {
     var imageEntropyPreviewFrames: List<ByteArray>? = null
     var imageEntropyFinalImage: ByteArray? = null
 
+    // Message-signing working state (upstream controller.sign_message_data):
+    // derivation_path, message, addr_format, seed, paged_message.
+    var signMessageData: MutableMap<String, Any?>? = null
+
     var resumeMainFlow: String? = null
 
     // Flow constants (upstream Controller.FLOW__*)
@@ -104,6 +108,7 @@ class Controller private constructor() {
             multisigWalletDescriptor = null
             imageEntropyPreviewFrames = null
             imageEntropyFinalImage = null
+            signMessageData = null
         }
 
         Log.i("Controller", "back_stack: ${backStack.map { it.ViewCls?.simpleName }}")

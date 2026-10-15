@@ -32,6 +32,10 @@ object Address {
     fun p2pkh(network: Networks.Network, compressedPubkey: ByteArray): String =
         Base58.encodeCheck(byteArrayOf(network.p2pkh.toByte()) + Hashes.hash160(compressedPubkey))
 
+    /** P2TR: bech32m v1 of the (already tweaked) 32-byte output key. */
+    fun p2trAddress(network: Networks.Network, outputKeyXOnly: ByteArray): String =
+        Bech32.encodeAddress(network.bech32, 1, outputKeyXOnly, Bech32.Encoding.BECH32M)
+
     // script builders (BIP-141)
 
     fun p2wpkhScript(compressedPubkey: ByteArray): ByteArray =

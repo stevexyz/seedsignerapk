@@ -9,6 +9,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.seedsigner.app.BackStackView
+import com.seedsigner.app.Controller
 import com.seedsigner.app.Destination
 import com.seedsigner.app.Ui
 import com.seedsigner.app.View
@@ -109,6 +110,14 @@ class SeedOptionsView : View() {
         val network = controller.settings.getValue<String>(Settings.Const.SETTING__NETWORK)
         val fp = seed.getFingerprint(network)
 
+        // A seed picked for message signing resumes that flow directly
+        // (upstream SeedOptionsView.run).
+        if (controller.resumeMainFlow == Controller.Flow.SIGN_MESSAGE) {
+            controller.signMessageData?.set("seed", seed)
+            return Destination(SeedSignMessageConfirmMessageView::class.java,
+                viewArgs = mapOf("pageNum" to 0), skipCurrentView = true)
+        }
+
         // A freshly loaded seed that matches a pending PSBT resumes the
         // signing flow directly (upstream SeedOptionsView.run).
         controller.psbt?.let { psbt ->
@@ -122,22 +131,40 @@ class SeedOptionsView : View() {
             }
         }
 
+        val buttons = mutableListOf("Export xpubs", "BIP-85 child seeds")
+        if (settings.getValue<String>(Settings.Const.SETTING__MESSAGE_SIGNING) == Settings.Const.OPTION__ENABLED) {
+            buttons.add("Sign message")
+        }
+        buttons.add("Remove seed")
         val screen = Ui.screen(activity, "Seed $fp")
-        screen.addButtons(listOf("Export xpubs", "BIP-85 child seeds", "Remove seed"))
+        screen.addButtons(buttons)
         controller.showScreen(screen)
         seedIndex = index
         return null
     }
 
     private var seedIndex: Int = 0
+    private var messageButtonIndex = -1
 
     override fun onResult(index: Int): Destination {
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
+        val messageIdx = if (settings.getValue<String>(Settings.Const.SETTING__MESSAGE_SIGNING) == Settings.Const.OPTION__ENABLED) 2 else -1
         return when (index) {
             0 -> Destination(SeedExportXpubSigTypeView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
             1 -> Destination(SeedBIP85SelectNumWordsView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
-            2 -> Destination(SeedDiscardView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
-            else -> Destination(SeedsMenuView::class.java)
+            messageIdx -> {
+                // Upstream: set the signing seed and scan a message QR.
+                controller.signMessageData = mutableMapOf<String, Any?>("seed" to controller.storage.seeds[seedIndex])
+                controller.resumeMainFlow = Controller.Flow.SIGN_MESSAGE
+                Destination(ScanView::class.java)
+            }
+            else -> {
+                if (index == messageIdx + 1) {
+                    Destination(SeedDiscardView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
+                } else {
+                    Destination(SeedsMenuView::class.java)
+                }
+            }
         }
     }
 }

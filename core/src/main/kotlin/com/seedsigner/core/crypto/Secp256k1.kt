@@ -107,6 +107,26 @@ object Secp256k1 {
         }
     }
 
+    /**
+     * Deterministic ECDSA with recovery id (libsecp256k1's
+     * ecdsa_sign_recoverable semantics): recId = R.y parity, flipped when
+     * low-s normalization negated s. Used by Bitcoin signed messages.
+     */
+    fun signRecoverable(msgHash: ByteArray, privateKey: ByteArray): Pair<Signature, Int> {
+        val d = BigInteger(1, privateKey)
+        val e = bits2left(msgHash, N)
+        val k = rfc6979(msgHash, d, null)
+        val rp = scalarMul(k)
+        val r = rp.x.mod(N)
+        var s = k.modInverse(N).multiply(e.add(r.multiply(d))).mod(N)
+        var recId = if (rp.y.testBit(0)) 1 else 0
+        if (s > N.shiftRight(1)) {
+            s = N.subtract(s)
+            recId = 1 - recId
+        }
+        return Signature(r, s) to recId
+    }
+
     /** Upstream `PrivateKey.sign(msg_hash, grind=True)`. */
     fun signWithGrind(msgHash: ByteArray, privateKey: ByteArray): Signature {
         var sig = sign(msgHash, privateKey, null)

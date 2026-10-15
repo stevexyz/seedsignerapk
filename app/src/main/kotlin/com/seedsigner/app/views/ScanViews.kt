@@ -149,10 +149,31 @@ class ScanResultView : View() {
             }
         }
 
-        // Non-UR QR: a SeedQR is a single frame of 48 (12 words) or 96 (24
+        // Non-UR QR, upstream QR type detection order (decode_qr.py):
+        // signmessage {derivation_path} ascii:{message}
+        val raw = String(ur.cbor, Charsets.UTF_8).trim()
+        if (raw.startsWith("signmessage")) {
+            val parts = raw.split(" ")
+            if (parts.size >= 3) {
+                val fmt = parts[2].split(":")[0]
+                if (fmt == "ascii") {
+                    val derivationPath = parts[1].replace("h", "'")
+                    val message = raw.split("$fmt:")[1]
+                    return Destination(SeedSignMessageStartView::class.java,
+                        viewArgs = mapOf("derivationPath" to derivationPath, "message" to message))
+                }
+            }
+            return Destination(ErrorView::class.java,
+                viewArgs = mapOf(
+                    "title" to "Error",
+                    "headline" to "Invalid message QR",
+                    "text" to "Expected: signmessage {derivation_path} ascii:{message}"
+                ))
+        }
+
+        // A SeedQR is a single frame of 48 (12 words) or 96 (24
         // words) digits, four digits per word index (upstream DecodeQR
         // SEED__SEEDQR).
-        val raw = String(ur.cbor, Charsets.UTF_8).trim()
         if (raw.matches(Regex("\\d{48,96}")) && raw.length % 4 == 0) {
             val numWords = raw.length / 4
             if (numWords == 12 || numWords == 24) {

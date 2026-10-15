@@ -31,14 +31,14 @@ Binding requirements: [spec.md](spec.md). First real milestone: end-to-end flow 
 * ✅ Seed import via QR: word entry, UR `crypto-hdkey` scan (v0.1), numeric SeedQR format (48/96 digits)
 * ⏳ CompactSeedQR dot-grid import — needs custom dot-pattern image processing; deferred (roadmap item, tracked in current-task.md)
 
-## v0.3 — Verification and utilities
+## v0.3 — Verification and utilities (in progress)
 
-* Address scan and verification
-* Full PSBT change-address verification + "full spend" warning
-* Address Explorer
-* Message signing
-* BIP85 child seeds
-* Custom derivation paths
+* ⏳ Address scan and verification
+* ⏳ Full PSBT change-address verification + "full spend" warning (multisig descriptor model)
+* ⏳ Address Explorer
+* ✅ Message signing (`signmessage` QR + seed-menu flow; compact signatures byte-identical to upstream, `:core:crosscheck-message-sign` 36/36)
+* ✅ BIP85 child seeds (39/39 incl. official spec vectors)
+* ✅ Custom derivation paths (xpub export, landed in v0.1 Chunk E)
 
 ## v0.4 — Polish
 

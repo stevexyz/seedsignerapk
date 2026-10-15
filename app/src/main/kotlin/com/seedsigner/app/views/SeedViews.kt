@@ -127,6 +127,14 @@ class SeedOptionsView : View() {
                 viewArgs = mapOf("pageNum" to 0), skipCurrentView = true)
         }
 
+        // A freshly loaded seed resumes the address explorer (upstream keeps
+        // the resume flow set; it's cleared later at the explorer's back).
+        if (controller.resumeMainFlow == Controller.Flow.ADDRESS_EXPLORER) {
+            return Destination(SeedExportXpubScriptTypeView::class.java,
+                viewArgs = mapOf("seedIndex" to index, "sigType" to Settings.Const.SINGLE_SIG),
+                skipCurrentView = true)
+        }
+
         // A freshly loaded seed that matches a pending PSBT resumes the
         // signing flow directly (upstream SeedOptionsView.run).
         controller.psbt?.let { psbt ->
@@ -140,7 +148,7 @@ class SeedOptionsView : View() {
             }
         }
 
-        val buttons = mutableListOf("Export xpubs", "BIP-85 child seeds")
+        val buttons = mutableListOf("Export xpubs", "Address explorer", "BIP-85 child seeds")
         if (settings.getValue<String>(Settings.Const.SETTING__MESSAGE_SIGNING) == Settings.Const.OPTION__ENABLED) {
             buttons.add("Sign message")
         }
@@ -157,10 +165,17 @@ class SeedOptionsView : View() {
 
     override fun onResult(index: Int): Destination {
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
-        val messageIdx = if (settings.getValue<String>(Settings.Const.SETTING__MESSAGE_SIGNING) == Settings.Const.OPTION__ENABLED) 2 else -1
+        val messageIdx = if (settings.getValue<String>(Settings.Const.SETTING__MESSAGE_SIGNING) == Settings.Const.OPTION__ENABLED) 3 else -1
         return when (index) {
             0 -> Destination(SeedExportXpubSigTypeView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
-            1 -> Destination(SeedBIP85SelectNumWordsView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
+            1 -> {
+                // Upstream EXPLORER: keep the resume flow set for the
+                // newly-loaded-seed path through the xpub script-type view.
+                controller.resumeMainFlow = Controller.Flow.ADDRESS_EXPLORER
+                Destination(SeedExportXpubScriptTypeView::class.java,
+                    viewArgs = mapOf("seedIndex" to seedIndex, "sigType" to Settings.Const.SINGLE_SIG))
+            }
+            2 -> Destination(SeedBIP85SelectNumWordsView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
             messageIdx -> {
                 // Upstream: set the signing seed and scan a message QR.
                 controller.signMessageData = mutableMapOf<String, Any?>("seed" to controller.storage.seeds[seedIndex])

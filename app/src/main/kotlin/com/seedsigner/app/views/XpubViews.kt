@@ -4,6 +4,7 @@ import android.app.Activity
 import android.widget.EditText
 import android.widget.LinearLayout
 import com.seedsigner.app.BackStackView
+import com.seedsigner.app.Controller
 import com.seedsigner.app.Destination
 import com.seedsigner.app.Ui
 import com.seedsigner.app.View
@@ -73,14 +74,22 @@ class SeedExportXpubScriptTypeView : View() {
         val seed = controller.storage.seeds[seedIndex]
         seed.scriptOverride?.let { scriptTypes = listOf(it) }
 
+        val explorerFlow = controller.resumeMainFlow == Controller.Flow.ADDRESS_EXPLORER
+
         if (scriptTypes.size == 1) {
             args["scriptType"] = scriptTypes[0]
-            return Destination(SeedExportXpubQRFormatView::class.java, args + ("customDerivation" to null),
-                skipCurrentView = true)
+            return if (explorerFlow) {
+                Destination(ToolsAddressExplorerAddressTypeView::class.java,
+                    mapOf("seedIndex" to seedIndex, "scriptType" to scriptTypes[0], "customDerivation" to null),
+                    skipCurrentView = true)
+            } else {
+                Destination(SeedExportXpubQRFormatView::class.java, args + ("customDerivation" to null),
+                    skipCurrentView = true)
+            }
         }
 
         scriptOptions = Settings.Const.ALL_SCRIPT_TYPES.filter { it.first in scriptTypes }
-        val screen = Ui.screen(activity, "Export Xpub")
+        val screen = Ui.screen(activity, if (explorerFlow) "Address Explorer" else "Export Xpub")
         screen.addButtons(scriptOptions.map { it.second })
         controller.showScreen(screen)
         this.seedIndex = seedIndex
@@ -101,6 +110,9 @@ class SeedExportXpubScriptTypeView : View() {
         )
         return if (scriptType == Settings.Const.CUSTOM_DERIVATION) {
             Destination(SeedExportXpubCustomDerivationView::class.java, args)
+        } else if (controller.resumeMainFlow == Controller.Flow.ADDRESS_EXPLORER) {
+            Destination(ToolsAddressExplorerAddressTypeView::class.java,
+                mapOf("seedIndex" to seedIndex, "scriptType" to scriptType, "customDerivation" to null))
         } else {
             Destination(SeedExportXpubQRFormatView::class.java, args)
         }

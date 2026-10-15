@@ -43,6 +43,7 @@ class ToolsMenuView : View() {
             0 -> Destination(ToolsImageEntropyLivePreviewView::class.java)
             1 -> Destination(ToolsDiceEntropyMnemonicLengthView::class.java)
             2 -> Destination(ToolsCalcFinalWordNumWordsView::class.java)
+            3 -> Destination(ToolsAddressExplorerSelectSourceView::class.java)
             4 -> Destination(ScanAddressView::class.java)
             // v0.3 features
             else -> Destination(NotYetImplementedView::class.java, viewArgs = mapOf("feature" to "this tool"))

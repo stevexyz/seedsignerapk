@@ -56,6 +56,11 @@ class Controller private constructor() {
     var unverifiedAddress: MutableMap<String, Any?>? = null
     var addressVerifySeed: Seed? = null
 
+    // Address explorer working state (upstream controller.address_explorer_data):
+    // seedIndex, network, script_type, derivation_path, xpub, cached address
+    // lists ("receive_addrs" / "change_addrs").
+    var addressExplorerData: MutableMap<String, Any?>? = null
+
     var resumeMainFlow: String? = null
 
     // Flow constants (upstream Controller.FLOW__*)
@@ -116,6 +121,7 @@ class Controller private constructor() {
             signMessageData = null
             unverifiedAddress = null
             addressVerifySeed = null
+            addressExplorerData = null
         }
 
         Log.i("Controller", "back_stack: ${backStack.map { it.ViewCls?.simpleName }}")
@@ -245,12 +251,19 @@ class Controller private constructor() {
         val cls = dest.ViewCls!!
         val args = dest.viewArgs
         if (args.isEmpty()) return cls.getDeclaredConstructor().newInstance() as View
-        val ctor = cls.declaredConstructors.first {
+        // Views that read viewArgs directly (no matching constructor) fall
+        // back to the no-arg constructor; view.viewArgs is assigned by the
+        // caller either way.
+        val ctor = cls.declaredConstructors.firstOrNull {
             it.parameters.size == args.size &&
                 args.keys.all { k -> it.parameters.any { p -> p.name == k } }
-        }
+        } ?: cls.getDeclaredConstructor()
         ctor.isAccessible = true
-        return ctor.newInstance(*ctor.parameters.map { args[it.name]!! }.toTypedArray()) as View
+        return if (ctor.parameters.isEmpty()) {
+            ctor.newInstance() as View
+        } else {
+            ctor.newInstance(*ctor.parameters.map { args[it.name] }.toTypedArray()) as View
+        }
     }
 
     /**

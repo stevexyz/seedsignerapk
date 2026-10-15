@@ -1,6 +1,16 @@
 # Current Task
 
-**Status: [in progress] v0.2 — seed creation (upstream Tools menu: dice, image entropy, calc final word) + generated-words backup flow. v0.1 remains pending its on-device E2E test.**
+**Status: [in progress] v0.3 — BIP-85 ✅ and message signing ✅ done this pass. Next: address scan & verification, then the multisig descriptor model (PSBT change verification), then Address Explorer. v0.1/v0.2 device E2E still pending the user's phone.**
+
+## v0.3 progress (this pass)
+
+| Item | State | Notes |
+| ---- | ----- | ----- |
+| BIP-85 child seeds | done, commit `55759a8` | `core` `Bip85.kt` (1:1 of embit bip85.py); 39/39 crosscheck incl. all 3 official BIP-85 spec vectors; num-words → child-index → shared words/quiz flow |
+| Message signing | done, commit `2ba8761` | `Secp256k1.signRecoverable` + `MessageSigner` (1:1 of `embit_utils.sign_message`); 36/36 byte-identical incl. 0xfd/0xfe compact-size branches; `signmessage` QR + seed-menu flow; settings-gated (upstream default disabled) |
+| Address scan & verification | next | upstream `ScanAddressView` + `SeedAddressVerificationView` + flow plumbing |
+| Multisig descriptor change verification | pending | upstream `multisig_wallet_descriptor.py` (1185 lines) + `verify_multisig_output` + descriptor scan flow |
+| Address Explorer | pending | upstream `ToolsAddressExplorer*` (4 views) |
 
 ## v0.2 chunk plan (scope checked against `seedsigner_orig` this session)
 
@@ -9,7 +19,9 @@
 | A | `core`: `MnemonicGeneration.kt` 1:1 port of `helpers/mnemonic_generation.py` (dice 50/99 rolls, coin flips 128/256, bytes, checksum w/ 11/23-word `0000` injection, partial final word) + differential crosscheck | done — 48/48 identical incl. the documented 50-roll vector (`:core:crosscheck-mnemonic-gen`), commit `f2aeb80` |
 | B | Views: real `ToolsMenuView` (Image/Dice/CalcFinalWord; Address* stay v0.3 stubs), dice length+entry (on-screen 1-6 pad), calc-final-word 4 views, `SeedWordsWarningView`/`SeedWordsView` (4/page), `SeedWordsBackupTestPromptView`/`SeedWordsBackupTestView`/Mistake/Success (4-option word quiz); pending-seed path wired: entropy → words → quiz → `SeedFinalizeView`; entry view gains the two calc-final-word routes | done — see commit after C |
 | C | Image entropy: `CameraScanner` entropy-frame mode (Y-plane forward, no decode) + flat-frame rejection + sha256 de-dup pool of 50 + single 1600² still capture; sha256 chain (ANDROID_ID + millis + frames + still) → 16/32 bytes → mnemonic. Platform mapping documented in REASONING.md | done — see commit after C |
-| D | Docs + commit | **in progress** |
+| D | Docs + commit | done — commits `9ad2f2a` + docs |
+
+**v0.2 outcome: everything done except the CompactSeedQR dot-grid import (deferred, tracked above).**
 
 Deferrals: CompactSeedQR (dot grid) import needs custom dot-pattern image processing (upstream `decode_qr.py`) — deferred. Seed import via QR covers: word entry, UR `crypto-hdkey`, and the numeric SeedQR format (48/96 digits, 4 per word — ported in Chunk B). BIP-85 child seeds (also a consumer of the words/quiz views) stay v0.3.
 

@@ -380,6 +380,16 @@ class PsbtParser(
     fun getChangeData(changeNum: Int): ChangeData? =
         if (changeNum < changeData.size) changeData[changeNum] else null
 
+    /**
+     * 1:1 port of upstream PSBTParser.verify_multisig_output: does the
+     * known-good descriptor own this change output?
+     */
+    fun verifyMultisigOutput(descriptor: com.seedsigner.core.descriptor.Descriptor, changeNum: Int): Boolean {
+        val i = getChangeData(changeNum)!!.outputIndex
+        val output = psbt!!.outputs[i]
+        return descriptor.owns(output.scriptPubkey?.data, output.bip32Derivations)
+    }
+
     init {
         parse()
     }

@@ -601,23 +601,4 @@ class PSBTSigningErrorView : View() {
     }
 }
 
-/**
- * Upstream LoadMultisigWalletDescriptorView (seed_views.py). v0.1 scope:
- * descriptor scanning/verification is a v0.3 feature (see feature_roadmap.md
- * "Full PSBT change-address verification"), so the Scan button reports that
- * instead of faking a flow. Cancel routes back into the PSBT flow, exactly
- * like upstream.
- */
-class LoadMultisigWalletDescriptorView : View() {
 
-    override fun run(activity: Activity): Destination? {
-        val screen = Ui.screen(activity, "Multisig Descriptor", showBack = false)
-        screen.addText("Multisig descriptor verification arrives in v0.3.", 16f)
-        screen.addButtons(listOf("Back"))
-        controller.showScreen(screen)
-        return null
-    }
-
-    override fun onResult(index: Int): Destination =
-        Destination(BackStackView::class.java)
-}

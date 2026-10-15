@@ -86,11 +86,13 @@ class PSBTSelectSeedView : View() {
             0 -> Destination(ScanView::class.java)
             1 -> {
                 controller.storage.initPendingMnemonic(numWords = 12)
-                Destination(SeedMnemonicEntryView::class.java)
+                Destination(SeedMnemonicEntryView::class.java,
+                    viewArgs = mapOf("curWordIndex" to 0, "isCalcFinalWord" to false))
             }
             else -> {
                 controller.storage.initPendingMnemonic(numWords = 24)
-                Destination(SeedMnemonicEntryView::class.java)
+                Destination(SeedMnemonicEntryView::class.java,
+                    viewArgs = mapOf("curWordIndex" to 0, "isCalcFinalWord" to false))
             }
         }
     }

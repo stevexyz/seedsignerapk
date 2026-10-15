@@ -81,11 +81,13 @@ class LoadSeedView : View() {
             "Scan a SeedQR" -> Destination(ScanView::class.java)
             "Enter 12-word seed" -> {
                 controller.storage.initPendingMnemonic(numWords = 12)
-                Destination(SeedMnemonicEntryView::class.java)
+                Destination(SeedMnemonicEntryView::class.java,
+                    viewArgs = mapOf("curWordIndex" to 0, "isCalcFinalWord" to false))
             }
             "Enter 24-word seed" -> {
                 controller.storage.initPendingMnemonic(numWords = 24)
-                Destination(SeedMnemonicEntryView::class.java)
+                Destination(SeedMnemonicEntryView::class.java,
+                    viewArgs = mapOf("curWordIndex" to 0, "isCalcFinalWord" to false))
             }
             "Enter Electrum seed" ->
                 Destination(NotYetImplementedView::class.java, viewArgs = mapOf("feature" to "Electrum seed"))
@@ -260,6 +262,19 @@ class SeedMnemonicEntryView(
         val word = selectedWord ?: return Destination(BackStackView::class.java)
         controller.storage.updatePendingMnemonic(word, curWordIndex)
 
+        if (isCalcFinalWord && curWordIndex == controller.storage.pendingMnemonicLength - 2) {
+            // Time to calculate the last word: the user decides how to specify
+            // the last bits of entropy for the final word.
+            return Destination(ToolsCalcFinalWordFinalizePromptView::class.java)
+        }
+
+        if (isCalcFinalWord && curWordIndex == controller.storage.pendingMnemonicLength - 1) {
+            // The user selected a final word to contribute entropy; show the
+            // computed checksum word.
+            return Destination(ToolsCalcFinalWordShowFinalWordView::class.java,
+                viewArgs = mapOf("coinFlips" to null))
+        }
+
         if (curWordIndex < controller.storage.pendingMnemonicLength - 1) {
             return Destination(
                 SeedMnemonicEntryView::class.java,
@@ -288,7 +303,7 @@ class SeedMnemonicInvalidView : View() {
     }
 
     override fun onResult(index: Int): Destination = when (index) {
-        0 -> Destination(SeedMnemonicEntryView::class.java, viewArgs = mapOf("curWordIndex" to 0))
+        0 -> Destination(SeedMnemonicEntryView::class.java, viewArgs = mapOf("curWordIndex" to 0, "isCalcFinalWord" to false))
         else -> {
             controller.storage.discardPendingMnemonic()
             Destination(MainMenuView::class.java, clearHistory = true)

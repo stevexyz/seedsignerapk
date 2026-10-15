@@ -77,10 +77,3 @@ class PowerOptionsView : View() {
         else -> Destination(BackStackView::class.java)
     }
 }
-
-/** Tools menu lands with its features (address verification, BIP-85, message signing). */
-class ToolsMenuView : View() {
-    override fun run(activity: Activity): Destination =
-        Destination(NotYetImplementedView::class.java,
-            viewArgs = mapOf("feature" to "Tools"))
-}

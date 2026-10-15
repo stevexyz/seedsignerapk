@@ -21,13 +21,15 @@ Binding requirements: [spec.md](spec.md). First real milestone: end-to-end flow 
 * ✅ Settings (network), plain-file persistence
 * ✅ CI: build + unit tests (`.github/workflows/ci.yml`: `:core:test` + `:app:assembleDebug`)
 
-## v0.2 — Seed creation
+## v0.2 — Seed creation (mostly done; CompactSeedQR dot-grid deferred)
 
-* BIP39 word picker with checksum calculation
-* Dice rolls (see [dice_verification.md](dice_verification.md))
-* Camera image entropy
-* BIP39 passphrase (13th/25th word)
-* SeedQR / CompactSeedQR manual transcription (dots vs grid)
+* ✅ New seed from dice rolls (50/99 rolls, [dice_verification.md](dice_verification.md) vectors pinned in the crosscheck)
+* ✅ New seed from camera image entropy (50-frame pool + full-res still, NIST-style flat/repeat rejection)
+* ✅ Calc 12th/24th word (coin-flip / word / zero entropy + checksum display)
+* ✅ Generated-words review: warning, paged display, optional 4-option backup quiz
+* ✅ BIP39 passphrase (13th/25th word) — landed in v0.1 (load-seed flow)
+* ✅ Seed import via QR: word entry, UR `crypto-hdkey` scan (v0.1), numeric SeedQR format (48/96 digits)
+* ⏳ CompactSeedQR dot-grid import — needs custom dot-pattern image processing; deferred (roadmap item, tracked in current-task.md)
 
 ## v0.3 — Verification and utilities
 

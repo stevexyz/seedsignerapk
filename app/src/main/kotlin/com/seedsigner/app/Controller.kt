@@ -40,6 +40,13 @@ class Controller private constructor() {
     // v0.3: the user-supplied multisig wallet descriptor (typed when the
     // descriptor model lands); null until then.
     var multisigWalletDescriptor: Any? = null
+
+    // Image-entropy working state (upstream controller attrs): the pooled
+    // preview frames (packed Y planes) and the final still capture.
+    // Wiped as soon as the mnemonic is generated and on Home.
+    var imageEntropyPreviewFrames: List<ByteArray>? = null
+    var imageEntropyFinalImage: ByteArray? = null
+
     var resumeMainFlow: String? = null
 
     // Flow constants (upstream Controller.FLOW__*)
@@ -95,6 +102,8 @@ class Controller private constructor() {
             psbtSeed = null
             psbtParser = null
             multisigWalletDescriptor = null
+            imageEntropyPreviewFrames = null
+            imageEntropyFinalImage = null
         }
 
         Log.i("Controller", "back_stack: ${backStack.map { it.ViewCls?.simpleName }}")

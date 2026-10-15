@@ -48,10 +48,14 @@ class SeedStorage {
         _pendingIsElectrum = isElectrum
     }
 
-    /** Replaces the nth word in the pending mnemonic. */
-    fun updatePendingMnemonic(word: String, index: Int) {
-        if (index >= _pendingMnemonic.size) return
-        _pendingMnemonic[index] = word
+    /**
+     * Replaces the nth word in the pending mnemonic. Negative indices count
+     * from the end, like Python (upstream passes -1 for the final word).
+     */
+    fun updatePendingMnemonic(word: String?, index: Int) {
+        val i = if (index < 0) _pendingMnemonic.size + index else index
+        if (i < 0 || i >= _pendingMnemonic.size) return
+        _pendingMnemonic[i] = word
     }
 
     fun getPendingMnemonicWord(index: Int): String? =

@@ -6,12 +6,12 @@
 
 | Chunk | Scope | State |
 | ----- | ----- | ----- |
-| A | `core`: `MnemonicGeneration.kt` 1:1 port of `helpers/mnemonic_generation.py` (dice 50/99 rolls, coin flips 128/256, bytes, checksum w/ 11/23-word `0000` injection, partial final word) + differential crosscheck | **in progress** |
-| B | Views: real `ToolsMenuView` (Image/Dice/CalcFinalWord; Address* stay v0.3 stubs), dice length+entry, calc-final-word 4 views, `SeedWordsWarningView`/`SeedWordsView` (4/page), `SeedWordsBackupTestPromptView`/`SeedWordsBackupTestView` (4-option word quiz); wire pending-seed path: entropy → words → quiz → `SeedFinalizeView` | not started |
-| C | Image entropy: `CameraScanner` frame-pool mode (flat-frame rejection on Y plane) + single full-res capture; sha256 chain (device id + uptime + preview frames + final frame) → 16/32 bytes → mnemonic. PIL autocontrast/resize is presentation-only upstream → skipped (documented) | not started |
-| D | Docs + commit | not started |
+| A | `core`: `MnemonicGeneration.kt` 1:1 port of `helpers/mnemonic_generation.py` (dice 50/99 rolls, coin flips 128/256, bytes, checksum w/ 11/23-word `0000` injection, partial final word) + differential crosscheck | done — 48/48 identical incl. the documented 50-roll vector (`:core:crosscheck-mnemonic-gen`), commit `f2aeb80` |
+| B | Views: real `ToolsMenuView` (Image/Dice/CalcFinalWord; Address* stay v0.3 stubs), dice length+entry (on-screen 1-6 pad), calc-final-word 4 views, `SeedWordsWarningView`/`SeedWordsView` (4/page), `SeedWordsBackupTestPromptView`/`SeedWordsBackupTestView`/Mistake/Success (4-option word quiz); pending-seed path wired: entropy → words → quiz → `SeedFinalizeView`; entry view gains the two calc-final-word routes | done — see commit after C |
+| C | Image entropy: `CameraScanner` entropy-frame mode (Y-plane forward, no decode) + flat-frame rejection + sha256 de-dup pool of 50 + single 1600² still capture; sha256 chain (ANDROID_ID + millis + frames + still) → 16/32 bytes → mnemonic. Platform mapping documented in REASONING.md | done — see commit after C |
+| D | Docs + commit | **in progress** |
 
-Deferrals: SeedQR (byteword QR) and CompactSeedQR (dot grid) import stay out of v0.2 — the dot grid needs custom image processing (upstream `decode_qr.py`); UR `crypto-hdkey` scan import already works since v0.1. BIP-85 child seeds (also a consumer of the words/quiz views) stay v0.3.
+Deferrals: CompactSeedQR (dot grid) import needs custom dot-pattern image processing (upstream `decode_qr.py`) — deferred. Seed import via QR covers: word entry, UR `crypto-hdkey`, and the numeric SeedQR format (48/96 digits, 4 per word — ported in Chunk B). BIP-85 child seeds (also a consumer of the words/quiz views) stay v0.3.
 
 ## v0.1 closeout (done, device E2E pending user's phone)
 

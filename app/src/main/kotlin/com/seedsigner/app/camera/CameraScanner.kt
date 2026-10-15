@@ -42,6 +42,43 @@ class CameraScanner(
     private var running = false
     private val reader = QRCodeReader()
 
+    /**
+     * Image-entropy mode: when set, frames are forwarded as packed Y planes
+     * (no QR decode) — the upstream image-entropy flows' frame source.
+     */
+    private var entropyFrameListener: ((ByteArray) -> Unit)? = null
+    fun setEntropyFrameListener(cb: ((ByteArray) -> Unit)?) {
+        entropyFrameListener = cb
+    }
+
+    /**
+     * One-shot still capture: full-res square YUV frame, packed Y plane
+     * delivered to [cb] (called on the main thread). Upstream takes the
+     * final full-res image at 2x the display's max dimension.
+     */
+    fun captureStill(cb: (ByteArray) -> Unit) {
+        val handler = bgHandler ?: return
+        val size = Size(1600, 1600)
+        val stillReader = ImageReader.newInstance(size.width, size.height, ImageFormat.YUV_420_888, 1).apply {
+            setOnImageAvailableListener({ r ->
+                val img = r.acquireLatestImage()
+                r.close()
+                val y = packY(img)
+                img?.close()
+                Handler(android.os.Looper.getMainLooper()).post { cb(y) }
+            }, handler)
+        }
+        val device = cameraDevice ?: run { stillReader.close(); return }
+        val session = captureSession ?: run { stillReader.close(); return }
+        session.capture(
+            device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
+                addTarget(stillReader.surface)
+            }.build(),
+            object : android.hardware.camera2.CameraCaptureSession.CaptureCallback() {},
+            handler
+        )
+    }
+
     private val previewSize: Size
         get() = Size(1280, 960)
 
@@ -114,12 +151,34 @@ class CameraScanner(
 
     private fun processFrame(image: Image?) {
         image ?: return
+        val listener = entropyFrameListener
+        if (listener != null) {
+            // entropy mode: forward the Y plane, skip QR decode
+            listener(packY(image))
+            image.close()
+            return
+        }
         val text = try {
             image.use { decode(it) }
         } catch (e: Exception) {
             null
         }
         if (text != null) onQrText(text)
+    }
+
+    /** Pack the Y plane of a YUV_420_888 frame contiguously. */
+    private fun packY(image: Image): ByteArray {
+        val plane = image.planes[0]
+        val width = image.width
+        val height = image.height
+        val rowStride = plane.rowStride
+        val buf = plane.buffer
+        val y = ByteArray(width * height)
+        for (row in 0 until height) {
+            buf.position(row * rowStride)
+            buf.get(y, row * width, width)
+        }
+        return y
     }
 
     /**

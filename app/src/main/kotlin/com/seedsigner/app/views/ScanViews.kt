@@ -149,6 +149,30 @@ class ScanResultView : View() {
             }
         }
 
+        // Non-UR QR: a SeedQR is a single frame of 48 (12 words) or 96 (24
+        // words) digits, four digits per word index (upstream DecodeQR
+        // SEED__SEEDQR).
+        val raw = String(ur.cbor, Charsets.UTF_8).trim()
+        if (raw.matches(Regex("\\d{48,96}")) && raw.length % 4 == 0) {
+            val numWords = raw.length / 4
+            if (numWords == 12 || numWords == 24) {
+                val words = mutableListOf<String>()
+                var valid = true
+                for (i in 0 until numWords) {
+                    val idx = raw.substring(i * 4, i * 4 + 4).toInt()
+                    if (idx !in 0 until com.seedsigner.core.crypto.Bip39.WORDLIST.size) {
+                        valid = false
+                        break
+                    }
+                    words.add(com.seedsigner.core.crypto.Bip39.WORDLIST[idx])
+                }
+                if (valid && controller.storage.validateMnemonic(words)) {
+                    controller.storage.setPendingSeed(com.seedsigner.app.models.Seed(mnemonic = words))
+                    return Destination(SeedFinalizeView::class.java, skipCurrentView = true)
+                }
+            }
+        }
+
         val screen = Ui.screen(activity, "Scanned")
         screen.addText(ur.type, 22f)
         screen.addText("${ur.cbor.size} bytes of payload", 14f)

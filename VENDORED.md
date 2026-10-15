@@ -8,7 +8,16 @@ repository, pinned to a specific release.
 
 - **Upstream**: <https://github.com/zxing/zxing>, tag `zxing-3.5.4`
 - **License**: Apache License 2.0 (each file carries its license header)
-- **Copied**: Java source only, unmodified. No JAR, no prebuilt artifact.
+- **Copied**: Java source only. No JAR, no prebuilt artifact.
+- **Modifications** (2 files, documented here per policy):
+  - `qrcode/encoder/Encoder.java` — the `encode(String, ...)` pipeline was
+    split so its tail (version selection, EC interleaving, masking, matrix
+    build) is a private `buildQrCode(...)` / `finishAndReturn(...)` helper,
+    and a new `public static QRCode encodeBytes(byte[], ...)` overload adds
+    byte-mode input (used for compact SeedQR display). String-path behavior
+    is unchanged: `ZxingDecodeTest` and `:core:crosscheck-qr` still pass.
+  - `qrcode/QRCodeWriter.java` — matching `encodeBytes(byte[], ...)`
+    instance overload.
 - **Location**: `core/src/main/java/com/google/zxing/` — 66 files: the QR
   **decoder** (detector, bit-matrix parser, RS decoder, data unmasking,
   binarizers, luminance sources incl. `PlanarYUVLuminanceSource` for camera2

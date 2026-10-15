@@ -38,9 +38,12 @@ private fun View.wordsTitle(bip85ChildIndex: Int?): String =
 /** Upstream SeedWordsWarningView. */
 class SeedWordsWarningView(
     private val seed: Seed? = null,
+    private val seedIndex: Int? = null,
     private val bip85ChildIndex: Int? = null,
     private val bip85NumWords: Int? = null
 ) : View() {
+
+    private fun activeSeed(): Seed? = seed ?: seedIndex?.let { controller.storage.seeds[it] }
 
     override fun run(activity: Activity): Destination? {
         val screen = Ui.screen(activity, "Keep your seed private")
@@ -55,7 +58,7 @@ class SeedWordsWarningView(
         // Only one exit point.
         return Destination(SeedWordsView::class.java,
             viewArgs = mapOf(
-                "seed" to seed, "pageIndex" to 0,
+                "seed" to activeSeed(), "pageIndex" to 0,
                 "bip85ChildIndex" to bip85ChildIndex, "bip85NumWords" to bip85NumWords
             ), skipCurrentView = true)
     }
@@ -64,6 +67,7 @@ class SeedWordsWarningView(
 /** Upstream SeedWordsView: 4 words per page. */
 class SeedWordsView(
     private val seed: Seed? = null,
+    private val seedIndex: Int? = null,
     private val pageIndex: Int = 0,
     private val bip85ChildIndex: Int? = null,
     private val bip85NumWords: Int? = null
@@ -71,9 +75,11 @@ class SeedWordsView(
 
     private val WORDS_PER_PAGE = 4
 
+    private fun activeSeed(): Seed? = seed ?: seedIndex?.let { controller.storage.seeds[it] } ?: controller.storage.pendingSeed
+
     override fun run(activity: Activity): Destination? {
-        val isPendingSeed = seed == null
-        val theSeed = if (isPendingSeed) controller.storage.pendingSeed else seed
+        val isPendingSeed = seed == null && seedIndex == null
+        val theSeed = activeSeed()
         val mnemonic = wordsFor(theSeed!!, bip85ChildIndex, bip85NumWords)
         val numPages = mnemonic.size / WORDS_PER_PAGE
         val words = mnemonic.subList(pageIndex * WORDS_PER_PAGE, minOf(mnemonic.size, (pageIndex + 1) * WORDS_PER_PAGE))
@@ -91,16 +97,15 @@ class SeedWordsView(
 
     private val nextArgs: Map<String, Any?>
         get() = mapOf(
-            "seed" to (if (seed == null) null else seed),
+            "seed" to seed, "seedIndex" to seedIndex,
             "bip85ChildIndex" to bip85ChildIndex,
             "bip85NumWords" to bip85NumWords
         )
 
     override fun onResult(index: Int): Destination {
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
-        val isPendingSeed = seed == null
-        val mnemonic = wordsFor(if (isPendingSeed) controller.storage.pendingSeed!! else seed!!,
-            bip85ChildIndex, bip85NumWords)
+        val isPendingSeed = seed == null && seedIndex == null
+        val mnemonic = wordsFor(activeSeed()!!, bip85ChildIndex, bip85NumWords)
         val numPages = mnemonic.size / WORDS_PER_PAGE
 
         return if (pageIndex < numPages - 1) {
@@ -117,6 +122,7 @@ class SeedWordsView(
 /** Upstream SeedWordsBackupTestPromptView. */
 class SeedWordsBackupTestPromptView(
     private val seed: Seed? = null,
+    private val seedIndex: Int? = null,
     private val bip85ChildIndex: Int? = null,
     private val bip85NumWords: Int? = null
 ) : View() {
@@ -131,7 +137,7 @@ class SeedWordsBackupTestPromptView(
 
     private val args: Map<String, Any?>
         get() = mapOf(
-            "seed" to seed,
+            "seed" to seed, "seedIndex" to seedIndex,
             "bip85ChildIndex" to bip85ChildIndex,
             "bip85NumWords" to bip85NumWords
         )
@@ -142,9 +148,9 @@ class SeedWordsBackupTestPromptView(
             Destination(SeedWordsBackupTestView::class.java,
                 args + ("confirmedList" to null) + ("curIndex" to null))
         } else {
-            if (seed == null) Destination(SeedFinalizeView::class.java)
+            if (seed == null && seedIndex == null) Destination(SeedFinalizeView::class.java)
             else Destination(SeedOptionsView::class.java,
-                viewArgs = mapOf("seedIndex" to controller.storage.seeds.indexOf(seed)))
+                viewArgs = mapOf("seedIndex" to (seedIndex ?: controller.storage.seeds.indexOf(seed!!))))
         }
     }
 }
@@ -155,6 +161,7 @@ class SeedWordsBackupTestPromptView(
  */
 class SeedWordsBackupTestView(
     private val seed: Seed? = null,
+    private val seedIndex: Int? = null,
     private val confirmedList: List<*>? = null,
     private val curIndex: Int? = null,
     private val bip85ChildIndex: Int? = null,
@@ -166,9 +173,10 @@ class SeedWordsBackupTestView(
     private var cur = -1
     private var options: List<String> = emptyList()
 
+    private fun activeSeed(): Seed? = seed ?: seedIndex?.let { controller.storage.seeds[it] } ?: controller.storage.pendingSeed
+
     override fun run(activity: Activity): Destination? {
-        val isPendingSeed = seed == null
-        val theSeed = if (isPendingSeed) controller.storage.pendingSeed else seed
+        val theSeed = activeSeed()
         mnemonicList = wordsFor(theSeed!!, bip85ChildIndex, bip85NumWords)
         confirmedList?.filterNotNull()?.forEach { confirmed.add(it as Int) }
         cur = curIndex ?: -1
@@ -192,7 +200,7 @@ class SeedWordsBackupTestView(
 
     private val args: Map<String, Any?>
         get() = mapOf(
-            "seed" to (if (seed == null) null else seed),
+            "seed" to seed, "seedIndex" to seedIndex,
             "bip85ChildIndex" to bip85ChildIndex,
             "bip85NumWords" to bip85NumWords
         )
@@ -220,6 +228,7 @@ class SeedWordsBackupTestView(
 /** Upstream SeedWordsBackupTestMistakeView. */
 class SeedWordsBackupTestMistakeView(
     private val seed: Seed? = null,
+    private val seedIndex: Int? = null,
     private val curIndex: Int = 0,
     private val wrongWord: String = "",
     private val confirmedList: List<*>? = null,
@@ -238,7 +247,7 @@ class SeedWordsBackupTestMistakeView(
 
     private val args: Map<String, Any?>
         get() = mapOf(
-            "seed" to seed,
+            "seed" to seed, "seedIndex" to seedIndex,
             "bip85ChildIndex" to bip85ChildIndex,
             "bip85NumWords" to bip85NumWords
         )
@@ -257,6 +266,7 @@ class SeedWordsBackupTestMistakeView(
 /** Upstream SeedWordsBackupTestSuccessView. */
 class SeedWordsBackupTestSuccessView(
     private val seed: Seed? = null,
+    private val seedIndex: Int? = null,
     private val bip85ChildIndex: Int? = null,
     private val bip85NumWords: Int? = null
 ) : View() {
@@ -271,11 +281,11 @@ class SeedWordsBackupTestSuccessView(
     }
 
     override fun onResult(index: Int): Destination {
-        return if (seed == null) {
+        return if (seed == null && seedIndex == null) {
             Destination(SeedFinalizeView::class.java)
         } else {
             Destination(SeedOptionsView::class.java,
-                viewArgs = mapOf("seedIndex" to controller.storage.seeds.indexOf(seed)), clearHistory = true)
+                viewArgs = mapOf("seedIndex" to (seedIndex ?: controller.storage.seeds.indexOf(seed!!))), clearHistory = true)
         }
     }
 }

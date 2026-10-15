@@ -5,22 +5,26 @@ import com.seedsigner.core.crypto.Bip32
 import com.seedsigner.core.crypto.Bip39
 import com.seedsigner.core.crypto.Networks
 import java.text.Normalizer
+import javax.crypto.Mac
+import javax.crypto.spec.PBEKeySpec
+import java.security.spec.KeySpec
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.SecretKeySpec
 
 /**
- * 1:1 port of the core of seedsigner_orig/src/seedsigner/models/seed.py
- * (BIP-39 Seed; ElectrumSeed lands in Chunk D when it's enabled).
+ * 1:1 port of the core of seedsigner_orig/src/seedsigner/models/seed.py.
  *
  * Memory-only (spec §1.2): a Seed exists only while this process lives.
  */
-class Seed(
+abstract class Seed(
     mnemonic: List<String>,
     passphrase: String = "",
     val wordlistLanguageCode: String = Const.WORDLIST_LANGUAGE__ENGLISH
 ) {
     private val _mnemonicList: List<String>
-    private var _passphrase: String
-    var seedBytes: ByteArray
-        private set
+    protected var _passphrase: String
+    var seedBytes: ByteArray = ByteArray(0)
+        protected set
 
     init {
         require(mnemonic.isNotEmpty()) { "Must initialize a Seed with a mnemonic List<String>" }
@@ -28,15 +32,20 @@ class Seed(
         _mnemonicList = Normalizer.normalize(mnemonic.joinToString(" ").trim(), Normalizer.Form.NFKD)
             .split(" ")
         _passphrase = if (passphrase.isNotEmpty()) Normalizer.normalize(passphrase, Normalizer.Form.NFKD) else ""
+        _generateSeed()
+    }
+
+    /** Upstream `Seed._generate_seed` (base: BIP-39). Subclasses override. */
+    protected open fun _generateSeed() {
         seedBytes = Bip39.mnemonicToSeed(mnemonicStr, _passphrase)
     }
 
     val passphrase: String get() = _passphrase
 
     /** Upstream `set_passphrase`: NFKD-normalize and regenerate the seed. */
-    fun setPassphrase(passphrase: String, regenerateSeed: Boolean = true) {
+    open fun setPassphrase(passphrase: String, regenerateSeed: Boolean = true) {
         _passphrase = if (passphrase.isNotEmpty()) Normalizer.normalize(passphrase, Normalizer.Form.NFKD) else ""
-        if (regenerateSeed) seedBytes = Bip39.mnemonicToSeed(mnemonicStr, _passphrase)
+        if (regenerateSeed) _generateSeed()
     }
 
     companion object {
@@ -52,8 +61,8 @@ class Seed(
     val wordlist: List<String> get() = getWordlist(wordlistLanguageCode)
     val hasPassphrase: Boolean get() = _passphrase != ""
     val passphraseLabel: String get() = Const.LABEL__BIP39_PASSPHRASE
-    val seedqrSupported: Boolean get() = true
-    val bip85Supported: Boolean get() = true
+    open val seedqrSupported: Boolean get() = true
+    open val bip85Supported: Boolean get() = true
 
     /**
      * First 4 bytes of the root xprv's hash160, hex — matches upstream
@@ -80,9 +89,9 @@ class Seed(
     }
 
     /** BIP-39 seeds have no script/derivation overrides (upstream base class). */
-    val scriptOverride: String? get() = null
+    open val scriptOverride: String? get() = null
 
-    fun derivationOverride(sigType: String = Const.SINGLE_SIG): String? = null
+    open fun derivationOverride(sigType: String = Const.SINGLE_SIG): String? = null
 
     /** The xpub's pieces, as the QR encoders need them (encode_qr.py prep_xpub). */
     data class DerivedXpub(
@@ -129,6 +138,12 @@ class Seed(
         )
     }
 
+    /**
+     * Upstream SeedBase: seeds that can sign normal PSBTs. BIP-39 seeds
+     * qualify; Electrum seeds do not (upstream ElectrumSeed sets False).
+     */
+    open val isStandard: Boolean get() = true
+
     fun getXpub(walletPath: String = "/", network: String = Const.MAINNET): String {
         val embitNet = Networks.fromName(mapNetworkToEmbit(network))
         val root = Bip32.HDKey.fromSeed(seedBytes, embitNet.versions["xprv"]!!)
@@ -157,4 +172,88 @@ fun mapNetworkToEmbit(network: String): String = when (network) {
     Const.TESTNET -> "test"
     Const.REGTEST -> "regtest"
     else -> throw Exception("Unknown network: $network")
+}
+
+/**
+ * Upstream `Bip39Seed(Seed)` — the default seed type.
+ */
+class Bip39Seed(
+    mnemonic: List<String>,
+    passphrase: String = "",
+    wordlistLanguageCode: String = Const.WORDLIST_LANGUAGE__ENGLISH
+) : Seed(mnemonic, passphrase, wordlistLanguageCode)
+
+/**
+ * 1:1 port of upstream `ElectrumSeed(Seed)`: only 12 words, version prefix
+ * must be "100" (Segwit format), and the seed is
+ * `PBKDF2-SHA512(mnemonic, "electrum"+passphrase, 2048)`.
+ *
+ * Upstream quirks kept: the base passphrase is NFKD-normalized like BIP-39,
+ * but the Electrum passphrase override is lowercased + whitespace-collapsed
+ * (and NOT NFKD-normalized) before being concatenated into the PBKDF2 salt.
+ */
+class ElectrumSeed(
+    mnemonic: List<String>,
+    passphrase: String = "",
+    wordlistLanguageCode: String = Const.WORDLIST_LANGUAGE__ENGLISH
+) : Seed(mnemonic, passphrase, wordlistLanguageCode) {
+
+    private val _electrumPassphrase: String
+        get() = if (_passphrase.isNotEmpty()) normalizeElectrumPassphrase(_passphrase) else ""
+
+    init {
+        // The base init generated the seed before this subclass existed:
+        // regenerate now that the passphrase override is available.
+        _generateSeed()
+    }
+
+    override fun _generateSeed() {
+        if (mnemonicList.size != 12) {
+            throw Exception("Unsupported Electrum seed length: ${mnemonicList.size}")
+        }
+        // Version check: first 3 hex chars of HMAC-SHA512("Seed version", mnemonic)
+        val mac = Mac.getInstance("HmacSHA512")
+        mac.init(SecretKeySpec("Seed version".toByteArray(Charsets.US_ASCII), "HmacSHA512"))
+        val digest = mac.doFinal(mnemonicStr.toByteArray(Charsets.UTF_8))
+        val prefix = digest.take(3).joinToString("") { "%02x".format(it) }
+        if (ELECTRUM_SEED_SEGWIT != prefix) {
+            throw Exception("Unsupported Electrum seed format: $prefix")
+        }
+        val pbkdf2 = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512")
+        val spec = PBEKeySpec(
+            mnemonicStr.toCharArray(),
+            ("electrum" + _electrumPassphrase).toByteArray(Charsets.UTF_8),
+            ELECTRUM_PBKDF2_ROUNDS,
+            512
+        )
+        seedBytes = pbkdf2.generateSecret(spec).encoded
+    }
+
+    /** Upstream `ElectrumSeed.set_passphrase`: the passphrase override is
+     *  stored in normalized-lowercase form and the seed is regenerated with
+     *  it. */
+    // setPassphrase inherits the base behavior: the _electrumPassphrase
+    // getter recomputes from the (base-updated) _passphrase, so the
+    // regenerated seed uses the normalized override automatically.
+
+
+    override val scriptOverride: String get() = Const.NATIVE_SEGWIT
+
+    override fun derivationOverride(sigType: String): String =
+        if (sigType == Const.SINGLE_SIG) "m/0h" else "m/1h"
+
+    override val isStandard: Boolean get() = false
+
+    companion object {
+        const val ELECTRUM_SEED_SEGWIT = "100"
+        const val ELECTRUM_PBKDF2_ROUNDS = 2048
+
+        /** 1:1 of upstream `normalize_electrum_passphrase`. */
+        fun normalizeElectrumPassphrase(passphrase: String): String {
+            var p = Normalizer.normalize(passphrase, Normalizer.Form.NFKD)
+            p = p.lowercase()
+            p = p.split("\\s+".toRegex()).joinToString(" ")
+            return p
+        }
+    }
 }

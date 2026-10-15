@@ -44,6 +44,29 @@ public final class QRCodeWriter implements Writer {
     return encode(contents, format, width, height, null);
   }
 
+  /** Byte-mode overload added by SeedSigner APK (see VENDORED.md). */
+  public BitMatrix encodeBytes(byte[] contents, BarcodeFormat format, int width, int height,
+                               Map<EncodeHintType,?> hints) throws WriterException {
+    if (contents.length == 0) {
+      throw new IllegalArgumentException("Found empty contents");
+    }
+    if (format != BarcodeFormat.QR_CODE) {
+      throw new IllegalArgumentException("Can only encode QR_CODE, but got " + format);
+    }
+    ErrorCorrectionLevel errorCorrectionLevel = ErrorCorrectionLevel.L;
+    int quietZone = QUIET_ZONE_SIZE;
+    if (hints != null) {
+      if (hints.containsKey(EncodeHintType.ERROR_CORRECTION)) {
+        errorCorrectionLevel = ErrorCorrectionLevel.valueOf(hints.get(EncodeHintType.ERROR_CORRECTION).toString());
+      }
+      if (hints.containsKey(EncodeHintType.MARGIN)) {
+        quietZone = Integer.parseInt(hints.get(EncodeHintType.MARGIN).toString());
+      }
+    }
+    QRCode code = Encoder.encodeBytes(contents, errorCorrectionLevel, hints);
+    return renderResult(code, width, height, quietZone);
+  }
+
   @Override
   public BitMatrix encode(String contents,
                           BarcodeFormat format,

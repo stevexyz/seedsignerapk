@@ -99,8 +99,7 @@ class LoadSeedView : View() {
                 Destination(SeedMnemonicEntryView::class.java,
                     viewArgs = mapOf("curWordIndex" to 0, "isCalcFinalWord" to false))
             }
-            "Enter Electrum seed" ->
-                Destination(NotYetImplementedView::class.java, viewArgs = mapOf("feature" to "Electrum seed"))
+            "Enter Electrum seed" -> Destination(SeedElectrumMnemonicStartView::class.java)
             "Create a seed" -> Destination(ToolsMenuView::class.java)
             else -> Destination(BackStackView::class.java)
         }
@@ -148,24 +147,42 @@ class SeedOptionsView : View() {
             }
         }
 
-        val buttons = mutableListOf("Export xpubs", "Address explorer", "BIP-85 child seeds")
+        // Upstream button order: EXPORT_XPUB, EXPLORER, BACKUP,
+        // [SIGN_MESSAGE], [BIP85_CHILD_SEED], DISCARD.
+        val buttons = mutableListOf("Export xpubs", "Address explorer", "Backup seed")
+        var messageIdx = -1
         if (settings.getValue<String>(Settings.Const.SETTING__MESSAGE_SIGNING) == Settings.Const.OPTION__ENABLED) {
             buttons.add("Sign message")
+            messageIdx = buttons.size - 1
         }
-        buttons.add("Remove seed")
+        var bip85Idx = -1
+        if (settings.getValue<String>(Settings.Const.SETTING__BIP85_CHILD_SEEDS) == Settings.Const.OPTION__ENABLED && seed.bip85Supported) {
+            buttons.add("BIP-85 child seeds")
+            bip85Idx = buttons.size - 1
+        }
+        buttons.add("Discard seed")
+        val discardIdx = buttons.size - 1
+
         val screen = Ui.screen(activity, "Seed $fp")
         screen.addButtons(buttons)
         controller.showScreen(screen)
         seedIndex = index
+        messageButtonIndex = messageIdx
+        bip85ButtonIndex = bip85Idx
+        discardButtonIndex = discardIdx
         return null
     }
 
     private var seedIndex: Int = 0
     private var messageButtonIndex = -1
+    private var bip85ButtonIndex = -1
+    private var discardButtonIndex = -1
 
     override fun onResult(index: Int): Destination {
-        if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
-        val messageIdx = if (settings.getValue<String>(Settings.Const.SETTING__MESSAGE_SIGNING) == Settings.Const.OPTION__ENABLED) 3 else -1
+        if (index == Ui.RET_CODE_BACK) {
+            // Upstream: BACK always returns to the Main Menu.
+            return Destination(MainMenuView::class.java)
+        }
         return when (index) {
             0 -> Destination(SeedExportXpubSigTypeView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
             1 -> {
@@ -175,20 +192,18 @@ class SeedOptionsView : View() {
                 Destination(SeedExportXpubScriptTypeView::class.java,
                     viewArgs = mapOf("seedIndex" to seedIndex, "sigType" to Settings.Const.SINGLE_SIG))
             }
-            2 -> Destination(SeedBIP85SelectNumWordsView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
-            messageIdx -> {
+            2 -> Destination(SeedBackupView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
+            messageButtonIndex -> {
                 // Upstream: set the signing seed and scan a message QR.
                 controller.signMessageData = mutableMapOf<String, Any?>("seed" to controller.storage.seeds[seedIndex])
                 controller.resumeMainFlow = Controller.Flow.SIGN_MESSAGE
                 Destination(ScanView::class.java)
             }
-            else -> {
-                if (index == messageIdx + 1) {
-                    Destination(SeedDiscardView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
-                } else {
-                    Destination(SeedsMenuView::class.java)
-                }
-            }
+            bip85ButtonIndex ->
+                Destination(SeedBIP85SelectNumWordsView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
+            discardButtonIndex ->
+                Destination(SeedDiscardView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
+            else -> Destination(SeedsMenuView::class.java)
         }
     }
 }

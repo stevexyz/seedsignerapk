@@ -57,4 +57,19 @@ object QrDisplay {
         bmp.setPixels(pixels, 0, sizePx, 0, 0, sizePx, sizePx)
         return bmp
     }
+
+    /** Render raw bytes (byte-mode QR) as a bitmap, e.g. compact SeedQR. */
+    fun bitmapBytes(data: ByteArray, sizePx: Int): Bitmap {
+        val hints = mapOf(EncodeHintType.MARGIN to 1)
+        val matrix = QRCodeWriter().encodeBytes(data, BarcodeFormat.QR_CODE, sizePx, sizePx, hints)
+        val pixels = IntArray(sizePx * sizePx)
+        for (y in 0 until sizePx) {
+            for (x in 0 until sizePx) {
+                pixels[y * sizePx + x] = if (matrix.get(x, y)) Color.BLACK else Color.WHITE
+            }
+        }
+        val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        bmp.setPixels(pixels, 0, sizePx, 0, 0, sizePx, sizePx)
+        return bmp
+    }
 }

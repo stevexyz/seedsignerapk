@@ -79,10 +79,6 @@ public final class Encoder {
                               ErrorCorrectionLevel ecLevel,
                               Map<EncodeHintType,?> hints) throws WriterException {
 
-    Version version;
-    BitArray headerAndDataBits;
-    Mode mode;
-
     boolean hasGS1FormatHint = hints != null && hints.containsKey(EncodeHintType.GS1_FORMAT) &&
         Boolean.parseBoolean(hints.get(EncodeHintType.GS1_FORMAT).toString());
     boolean hasCompactionHint = hints != null && hints.containsKey(EncodeHintType.QR_COMPACT) &&
@@ -100,20 +96,21 @@ public final class Encoder {
     }
 
     if (hasCompactionHint) {
-      mode = Mode.BYTE;
-
+      // Compact mode bypasses the standard pipeline entirely; keep as-is.
+      Mode mode = Mode.BYTE;
       Charset priorityEncoding = encoding.equals(DEFAULT_BYTE_MODE_ENCODING) ? null : encoding;
       MinimalEncoder.ResultList rn = MinimalEncoder.encode(content, null, priorityEncoding, hasGS1FormatHint, ecLevel);
 
-      headerAndDataBits = new BitArray();
+      BitArray headerAndDataBits = new BitArray();
       rn.getBits(headerAndDataBits);
-      version = rn.getVersion();
+      Version version = rn.getVersion();
+      return finishAndReturn(mode, headerAndDataBits, version, ecLevel, hints);
 
     } else {
 
       // Pick an encoding mode appropriate for the content. Note that this will not attempt to use
       // multiple modes / segments even if that were more efficient.
-      mode = chooseMode(content, encoding);
+      Mode mode = chooseMode(content, encoding);
 
       // This will store the header information, like mode and
       // length, as well as "header" segments like an ECI segment.
@@ -141,25 +138,90 @@ public final class Encoder {
       BitArray dataBits = new BitArray();
       appendBytes(content, mode, dataBits, encoding);
 
-      if (hints != null && hints.containsKey(EncodeHintType.QR_VERSION)) {
-        int versionNumber = Integer.parseInt(hints.get(EncodeHintType.QR_VERSION).toString());
-        version = Version.getVersionForNumber(versionNumber);
-        int bitsNeeded = calculateBitsNeeded(mode, headerBits, dataBits, version);
-        if (!willFit(bitsNeeded, version, ecLevel)) {
-          throw new WriterException("Data too big for requested version");
-        }
-      } else {
-        version = recommendVersion(ecLevel, mode, headerBits, dataBits);
-      }
-
-      headerAndDataBits = new BitArray();
-      headerAndDataBits.appendBitArray(headerBits);
-      // Find "length" of main segment and write it
-      int numLetters = mode == Mode.BYTE ? dataBits.getSizeInBytes() : content.length();
-      appendLengthInfo(numLetters, version, mode, headerAndDataBits);
-      // Put data together into the overall payload
-      headerAndDataBits.appendBitArray(dataBits);
+      return buildQrCode(mode, headerBits, dataBits,
+          mode == Mode.BYTE ? dataBits.getSizeInBytes() : content.length(),
+          ecLevel, hints);
     }
+  }
+
+  /**
+   * Encodes raw bytes (byte mode) as a QR code. Added by SeedSigner APK for
+   * byte-mode payloads (compact SeedQR); see VENDORED.md.
+   */
+  public static QRCode encodeBytes(byte[] data, ErrorCorrectionLevel ecLevel,
+                                   Map<EncodeHintType,?> hints) throws WriterException {
+    if (data.length == 0) {
+      throw new IllegalArgumentException("Found empty contents");
+    }
+    Mode mode = Mode.BYTE;
+    BitArray headerBits = new BitArray();
+    appendModeInfo(mode, headerBits);
+    BitArray dataBits = new BitArray();
+    for (byte b : data) {
+      dataBits.appendBits(b & 0xFF, 8);
+    }
+    return buildQrCode(mode, headerBits, dataBits, data.length, ecLevel, hints);
+  }
+
+  /**
+   * Tail of QR encoding for a fully-assembled header+data bit stream (used
+   * by the QR_COMPACT minimal-encoding path).
+   */
+  private static QRCode finishAndReturn(Mode mode, BitArray headerAndDataBits,
+                                        Version version, ErrorCorrectionLevel ecLevel,
+                                        Map<EncodeHintType,?> hints) throws WriterException {
+    Version.ECBlocks ecBlocks = version.getECBlocksForLevel(ecLevel);
+    int numDataBytes = version.getTotalCodewords() - ecBlocks.getTotalECCodewords();
+    terminateBits(numDataBytes, headerAndDataBits);
+    BitArray finalBits = interleaveWithECBytes(headerAndDataBits,
+                                               version.getTotalCodewords(),
+                                               numDataBytes,
+                                               ecBlocks.getNumBlocks());
+    QRCode qrCode = new QRCode();
+    qrCode.setECLevel(ecLevel);
+    qrCode.setMode(mode);
+    qrCode.setVersion(version);
+    int dimension = version.getDimensionForVersion();
+    ByteMatrix matrix = new ByteMatrix(dimension, dimension);
+    int maskPattern = -1;
+    if (hints != null && hints.containsKey(EncodeHintType.QR_MASK_PATTERN)) {
+      int hintMaskPattern = Integer.parseInt(hints.get(EncodeHintType.QR_MASK_PATTERN).toString());
+      maskPattern = QRCode.isValidMaskPattern(hintMaskPattern) ? hintMaskPattern : -1;
+    }
+    if (maskPattern == -1) {
+      maskPattern = chooseMaskPattern(finalBits, ecLevel, version, matrix);
+    }
+    qrCode.setMaskPattern(maskPattern);
+    MatrixUtil.buildMatrix(finalBits, ecLevel, version, maskPattern, matrix);
+    qrCode.setMatrix(matrix);
+    return qrCode;
+  }
+
+  /**
+   * Shared tail of QR encoding: version selection, EC interleaving, masking
+   * and matrix building. Extracted so {@link #encodeBytes} can reuse it.
+   */
+  private static QRCode buildQrCode(Mode mode, BitArray headerBits, BitArray dataBits,
+                                    int numLetters, ErrorCorrectionLevel ecLevel,
+                                    Map<EncodeHintType,?> hints) throws WriterException {
+    Version version;
+    if (hints != null && hints.containsKey(EncodeHintType.QR_VERSION)) {
+      int versionNumber = Integer.parseInt(hints.get(EncodeHintType.QR_VERSION).toString());
+      version = Version.getVersionForNumber(versionNumber);
+      int bitsNeeded = calculateBitsNeeded(mode, headerBits, dataBits, version);
+      if (!willFit(bitsNeeded, version, ecLevel)) {
+        throw new WriterException("Data too big for requested version");
+      }
+    } else {
+      version = recommendVersion(ecLevel, mode, headerBits, dataBits);
+    }
+
+    BitArray headerAndDataBits = new BitArray();
+    headerAndDataBits.appendBitArray(headerBits);
+    // Find "length" of main segment and write it
+    appendLengthInfo(numLetters, version, mode, headerAndDataBits);
+    // Put data together into the overall payload
+    headerAndDataBits.appendBitArray(dataBits);
 
     Version.ECBlocks ecBlocks = version.getECBlocksForLevel(ecLevel);
     int numDataBytes = version.getTotalCodewords() - ecBlocks.getTotalECCodewords();

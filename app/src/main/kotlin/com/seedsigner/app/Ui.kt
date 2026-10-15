@@ -93,6 +93,18 @@ object Ui {
 
         fun back() { resultHandler?.invoke(RET_CODE_BACK) }
 
+        /** Add a bitmap (e.g. a SeedQR to transcribe); [scaleToWidth] fits it to the screen width. */
+        fun addImage(bitmap: android.graphics.Bitmap, scaleToWidth: Boolean = true): android.widget.ImageView {
+            val iv = android.widget.ImageView(root.context)
+            iv.setImageBitmap(bitmap)
+            iv.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            val width = if (scaleToWidth) android.view.ViewGroup.LayoutParams.MATCH_PARENT
+            else android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            iv.layoutParams = android.widget.LinearLayout.LayoutParams(width, android.view.ViewGroup.LayoutParams.WRAP_CONTENT)
+            body.addView(iv)
+            return iv
+        }
+
         fun addText(text: String, size: Float = 16f, color: Int = 0xFFFFFFFF.toInt()): TextView {
             val tv = TextView(root.context)
             tv.text = text

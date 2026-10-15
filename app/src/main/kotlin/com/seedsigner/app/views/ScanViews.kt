@@ -143,7 +143,7 @@ class ScanResultView : View() {
                 } else {
                     // A freshly-scanned seed is pending until finalized
                     // (passphrase step).
-                    controller.storage.setPendingSeed(com.seedsigner.app.models.Seed(mnemonic = words))
+                    controller.storage.setPendingSeed(com.seedsigner.app.models.Bip39Seed(mnemonic = words))
                     Destination(SeedFinalizeView::class.java, skipCurrentView = true)
                 }
             }
@@ -209,7 +209,7 @@ class ScanResultView : View() {
                     words.add(com.seedsigner.core.crypto.Bip39.WORDLIST[idx])
                 }
                 if (valid && controller.storage.validateMnemonic(words)) {
-                    controller.storage.setPendingSeed(com.seedsigner.app.models.Seed(mnemonic = words))
+                    controller.storage.setPendingSeed(com.seedsigner.app.models.Bip39Seed(mnemonic = words))
                     return Destination(SeedFinalizeView::class.java, skipCurrentView = true)
                 }
             }

@@ -30,9 +30,9 @@ class SeedStorage {
         pendingSeed = null
     }
 
-    fun validateMnemonic(mnemonic: List<String>): Boolean =
+    fun validateMnemonic(mnemonic: List<String>, isElectrum: Boolean = _pendingIsElectrum): Boolean =
         try {
-            Seed(mnemonic)
+            if (isElectrum) ElectrumSeed(mnemonic) else Bip39Seed(mnemonic)
             true
         } catch (e: Exception) {
             false
@@ -68,14 +68,16 @@ class SeedStorage {
     fun getPendingMnemonicFingerprint(network: String = Settings.Const.MAINNET): String? {
         return try {
             if (_pendingMnemonic.any { it == null }) return null
-            Seed(_pendingMnemonic.map { it!! }).getFingerprint(network)
+            (if (_pendingIsElectrum) ElectrumSeed(_pendingMnemonic.map { it!! })
+                else Bip39Seed(_pendingMnemonic.map { it!! })).getFingerprint(network)
         } catch (e: Exception) {
             null
         }
     }
 
     fun convertPendingMnemonicToPendingSeed() {
-        pendingSeed = Seed(_pendingMnemonic.map { it!! })
+        pendingSeed = if (_pendingIsElectrum) ElectrumSeed(_pendingMnemonic.map { it!! })
+            else Bip39Seed(_pendingMnemonic.map { it!! })
         discardPendingMnemonic()
     }
 

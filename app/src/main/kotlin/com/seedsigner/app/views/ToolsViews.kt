@@ -8,6 +8,7 @@ import com.seedsigner.app.BackStackView
 import com.seedsigner.app.Destination
 import com.seedsigner.app.Ui
 import com.seedsigner.app.View
+import com.seedsigner.app.models.Bip39Seed
 import com.seedsigner.app.models.Seed
 import com.seedsigner.app.models.Settings
 import com.seedsigner.core.crypto.Bip39
@@ -286,7 +287,7 @@ class ToolsImageEntropyMnemonicLengthView : View() {
         controller.imageEntropyPreviewFrames = null
         controller.imageEntropyFinalImage = null
 
-        controller.storage.setPendingSeed(Seed(mnemonic = mnemonic))
+        controller.storage.setPendingSeed(Bip39Seed(mnemonic = mnemonic))
         return Destination(SeedWordsWarningView::class.java, viewArgs = mapOf("seed" to null, "bip85ChildIndex" to null, "bip85NumWords" to null), clearHistory = true)
     }
 }
@@ -377,7 +378,7 @@ class ToolsDiceEntropyEntryView : View() {
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
         // Completed: generate the seed from the digit string.
         val mnemonic = MnemonicGeneration.generateMnemonicFromDice(rolls)
-        controller.storage.setPendingSeed(Seed(mnemonic = mnemonic))
+        controller.storage.setPendingSeed(Bip39Seed(mnemonic = mnemonic))
         return Destination(SeedWordsWarningView::class.java, viewArgs = mapOf("seed" to null, "bip85ChildIndex" to null, "bip85NumWords" to null), clearHistory = true)
     }
 }
@@ -573,12 +574,13 @@ class ToolsCalcFinalWordDoneView : View() {
 
     override fun onResult(index: Int): Destination {
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
+        // Upstream: LOAD -> SeedFinalizeView; DISCARD -> SeedDiscardView
+        // (pending-seed flavor).
         return if (index == 0) {
             controller.storage.convertPendingMnemonicToPendingSeed()
             Destination(SeedFinalizeView::class.java)
         } else {
-            controller.storage.discardPendingMnemonic()
-            Destination(MainMenuView::class.java, clearHistory = true)
+            Destination(SeedDiscardView::class.java)
         }
     }
 }

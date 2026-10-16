@@ -76,7 +76,9 @@ is never a build input (spec §1.3) and never runs inside the app.
 
 ## Verifying a release download
 
-Releases publish the APK, a `seedsigner-android.<version>.sha256.txt` manifest, and its GPG signature:
+*(To run once the first signed release exists — roadmap "Beyond"; none exists yet.)*
+
+Releases will publish the APK, a `seedsigner-android.<version>.sha256.txt` manifest, and its GPG signature:
 
 ```bash
 gpg --fetch-keys <project-key-url>

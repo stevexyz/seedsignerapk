@@ -10,7 +10,7 @@ Binding requirements: [spec.md](spec.md). First real milestone: end-to-end flow 
 * `qr`: decoder from camera frames — **vendored ZXing** (Apache-2.0), attribution in `VENDORED.md`
 * Every routine tested against the repo test vectors ([dice_verification.md](dice_verification.md)) and differential-tested against `seedsigner_orig`
 
-## v0.1 — Core signing flow (testnet) ✅ (code complete; device E2E pending)
+## v0.1 — Core signing flow (testnet) ✅ (code complete; device E2E partially verified on emulator — see current-task.md)
 
 * ✅ `app` shell: one Activity, classic framework Views, manifest with camera permission only
 * ✅ Stateless in-memory seed holder
@@ -19,7 +19,7 @@ Binding requirements: [spec.md](spec.md). First real milestone: end-to-end flow 
 * ✅ xpub export (single sig + multisig)
 * ✅ PSBT scan → review → sign
 * ✅ Settings (network), plain-file persistence (load on start, save on every change + SettingsQR ingest)
-* ✅ CI: build + unit tests (`.github/workflows/ci.yml`: `:core:test` + `:app:assembleDebug`)
+* ✅ CI: build + unit tests (`.github/workflows/ci.yml`: `:core:test` + `:app:test` + `:app:assembleDebug`)
 
 ## v0.2 — Seed creation (mostly done; CompactSeedQR dot-grid deferred)
 

@@ -22,7 +22,9 @@ Crash stack traces appear in logcat under the `AndroidRuntime` tag.
 
 ### Debugging with a debugger (advanced)
 
-For a debug build, attach the Android Studio debugger to the running app, set breakpoints, and reproduce the crash. Debug builds log additional state that release builds do not; keep that extra logging out of release builds (a seed word printed to logcat on a user's device is a security bug).
+For a debug build, attach the Android Studio debugger to the running app, set breakpoints, and reproduce the crash.
+
+Never add logging that prints seed words, passphrases, or PSBT contents — in any build variant (a seed word in logcat on a user's device is a security bug).
 
 ### Reproducing with deterministic input
 

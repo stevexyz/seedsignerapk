@@ -12,14 +12,18 @@ Generate a new 12- or 24-word seed offline, e.g. with the repo's own generator (
 
 Convert the seed phrase to the numeric SeedQR encoding: each BIP39 word becomes a four-digit, zero-padded index into the BIP39 English wordlist, concatenated. The venv's embit ships the same wordlist:
 
-```python
-~/toolchain/venv/bin/python -c "from embit.wordlists.bip39 import WORDLIST; \nphrase='smoke chimney announce candy glory tongue refuse fatigue cricket once consider beef'; print(''.join('%04d' % WORDLIST.index(w) for w in phrase.split()))"
+```bash
+~/toolchain/venv/bin/python - <<'EOF'
+from embit.wordlists.bip39 import WORDLIST
+phrase = 'smoke chimney announce candy glory tongue refuse fatigue cricket once consider beef'
+print(''.join('%04d' % WORDLIST.index(w) for w in phrase.split()))
+EOF
 ```
 
 For the example phrase above you should see:
 
 ```
-1638032000740266079618271443067004111236
+163803200074026607961827144306700411123603780160
 ```
 
 Encode that digit string as a QR code **offline** (any local QR tool — do

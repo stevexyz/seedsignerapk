@@ -1,68 +1,25 @@
 # Current Task
 
-**Status: [in progress] closing out the audit-fix pass (2026-07). All audit
-items A1–A5, B1–B10, C1–C7 are FIXED in source (details in the "Audit
-pass" section below); the instantiateView reflection fix from the E2E
-session is included and now backed by `ViewInstantiationTest`. `:core:test`
-+ `:app:test` (both variants) + `:app:assembleDebug` are green.
-Remaining: commit, then on-device E2E (blocked on a webcam for QR scan-in;
-see Next steps).**
+**Status: [in progress] audit-fix pass CLOSED (2026-07): all findings
+A1–A6, B1–B10, C1–C7 fixed, committed (`eeaaa16` code, `5e80cd3` docs),
+`:core:test` + `:app:test` (both variants) + `:app:assembleDebug` green,
+and on-device E2E partially verified (results table below). Remaining: the
+webcam-blocked E2E items in Next.**
 
-## Where it stopped (restart here)
-
-### E2E setup state
+## Restart here
 
 | Thing | State |
 | ----- | ----- |
 | Emulator | `seedtest` AVD (pixel_7, android-34 google_apis x86_64, KVM, headless) in `~/toolchain/android-sdk/`; boot: `~/toolchain/android-sdk/emulator/emulator -avd seedtest -no-window -no-audio -gpu swiftshader_indirect -camera-back emulated`; wait `adb shell getprop sys.boot_completed` = 1 |
-| Camera | set to `emulated` (no webcam attached to the dev host yet; QR scan-in flows still blocked) |
-| APK | debug APK installed on `emulator-5554`, CAMERA granted, app launches, menu driven via `adb shell input tap` (1080×2400; menu buttons y≈1572/1728/1884/2040/2196) |
-| Seed entry | 12-word testnet seed entered via tap-driven on-screen keyboard: `smoke chimney announce candy glory tongue refuse fatigue cricket once consider beef`. Word screens + fingerprint screen render (fingerprint value changes with tap typos — entry is lossy but rendering is verified) |
+| Camera | `emulated` — no webcam on the dev host; QR scan-in flows blocked (see Next) |
+| APK | debug APK with ALL audit fixes installed on `emulator-5554`, CAMERA granted, driven via `adb shell input tap` (1080×2400) |
+| On device | settings = Testnet (persisted in `files/settings.json`); no seeds loaded (the E2E seed `65fb43fe` was discarded at the end of the session) |
+| Env | `export JAVA_HOME=$HOME/toolchain/jdk-17.0.20.1+1 PATH=$JAVA_HOME/bin:$PATH` + `export PATH=$HOME/toolchain/android-sdk/platform-tools:$PATH` (adb) |
 
-### The bug found and fixed (UNCOMMITTED)
-
-**Believed:** `Controller.instantiateView` matched a view constructor only
-on an EXACT key-count + name match against viewArgs.
-**Actual:** any call site whose viewArgs map doesn't carry ALL constructor
-param names (e.g. `SeedBackupView` → `SeedWordsWarningView` passes only
-`seedIndex`; the view has 4 params) silently fell back to the no-arg
-constructor, leaving every constructor property null → NPE in
-`SeedWordsView.run` (`activeSeed()` null) on
-"seed options → View seed words → I Understand".
-**Fix (in source now):**
-1. `Controller.instantiateView` — Python-kwargs semantics: pick the most
-   specific constructor whose parameters are ALL named in viewArgs
-   (extras ignored); no-arg constructor as fallback.
-2. `SeedWordsViews.kt` / `Bip85Views.kt` — the warning→words transitions
-   now pass `seedIndex` through (full key sets).
-**Rule that prevents the repeat:** never add a view constructor param
-without (a) passing it from every constructing call site or (b) proving the
-no-arg fallback can't be hit. Verify with a JVM test that simulates
-`instantiateView` (a scratch `app/src/test/kotlin/com/seedsigner/app/ReproTest.kt`
-was used for the diagnosis — **delete it before committing**).
-
-### Next steps (numbered)
-
-1. `rm app/src/test/kotlin/com/seedsigner/app/ReproTest.kt`
-2. Rebuild + reinstall: `./gradlew :app:assembleDebug` then
-   `adb install -r app/build/outputs/apk/debug/app-debug.apk`
-3. Re-enter the seed; verify the path that crashed: Seeds → (seed) →
-   Backup seed → View seed words → I Understand → words pages → Done
-4. Continue E2E: Export xpubs (screenshot), then QR scan-in.
-5. QR scan-in needs a camera source: user's webcam (`-camera-back
-   webcam0` after reboot) or an emulated QR surface — pick when the webcam
-   lands.
-6. PSBT E2E: build a testnet PSBT with `~/toolchain/venv` (embit), scan,
-   review, sign, read back the signed PSBT.
-7. Commit: instantiateView fix + seedIndex passthrough + this doc state.
-   Then close out the E2E milestone and write the user-requested report.
-
-### Env for restart
-
-```
-export JAVA_HOME=$HOME/toolchain/jdk-17.0.20.1+1 PATH=$JAVA_HOME/bin:$PATH
-export PATH=$HOME/toolchain/android-sdk/platform-tools:$PATH   # adb
-```
+The earlier E2E session's "Where it stopped / Next steps (numbered)" block
+(install, re-enter seed, ReproTest.kt deletion, commit) is fully done;
+that session's instantiateView bug and its fix are documented in the
+Audit pass section below (B1) and in REASONING.md.
 
 ## History this session (before E2E)
 
@@ -169,12 +126,29 @@ silently hit it; the matcher is now invariant-guarded by
 | A1 stored-seed branch: Discard seed | ✅ "Remove seed 65fb43fe?" → Remove → Seeds menu empty, no FATAL in logcat |
 | A1 pending-seed branch (calc-12th-word Discard) | code-reviewed; needs an 11-word typed entry to drive on device — left for the webcam session |
 
+### Documentation review pass (full re-read of every doc + claim verification)
+
+Findings fixed this pass (verified claims marked ✅ were recomputed, not re-trusted):
+
+| # | Where | Finding / fix |
+| - | ----- | ------------- |
+| D1 | `developer_tips.md` | The example SeedQR digit string was truncated (42 of 48 digits — one word missing); the 42-digit string would not have scanned as a valid numeric SeedQR. Recomputed with embit: `163803200074026607961827144306700411123603780160`. The escaped-`\n` one-liner became a heredoc. |
+| D2 | `current-task.md` | Stale restart block ("UNCOMMITTED bug", old numbered next steps, pre-audit emulator state) contradicted the audit/E2E sections — replaced with the current state. |
+| D3 | `README.md` | Install step pointed at releases that do not exist (pointed at the roadmap "Beyond" item instead); Status line updated: device E2E is *partially* verified, not "pending". |
+| D4 | `debug_crash.md` | Claimed "debug builds log additional state that release builds do not" — the app has no variant-specific logging; replaced with the real rule (never log seed material in any variant). |
+| D5 | `feature_roadmap.md` | v0.1 "device E2E pending" → "partially verified"; CI line now lists `:app:test`. |
+| D6 | `code_structure.md` | Said the vendored ZXing lives in `core.qr`; it is a separate `com.google.zxing` package under `core/src/main/java/`. |
+| D7 | `.github/workflows/ci.yml` | CI never ran `:app:test` (contradicted the roadmap's "build + unit tests" claim; `ViewInstantiationTest` was never CI-verified). Added. |
+
+Verified ✅ this pass: all `dice_verification.md` values recomputed byte-exact with embit (99-roll + 50-roll words, fingerprint `8d9cced8`, zpub, 5 derived addresses); 66 vendored ZXing files; 25 dice screenshots; every README doc link resolves; 11 crosscheck tools; `REASONING.md` entries internally consistent.
+
 ### Next (ordered)
 
-1. Commit (code + tests, then docs) — the user pushes.
-2. QR scan-in E2E stays blocked until a webcam is attached (`-camera-back webcam0`) or an emulated QR surface is picked.
+1. User pushes the commits (the first push also first-runs the CI with the new `:app:test` step).
+2. QR scan-in E2E — blocked until a webcam is attached (restart emulator with `-camera-back webcam0`) or an emulated QR surface is picked.
 3. PSBT E2E (embit-built testnet PSBT → scan → review → sign → read back).
 4. A1 pending-seed branch on device (Tools → Calc 12th/24th word → 11 words → Discard).
+5. Then close out the "device E2E" milestone (roadmap v0.1/v0.4 lines) and re-run the build_instructions verification suite once per change.
 
 ## Known deltas vs upstream (documented, deliberate)
 
@@ -198,3 +172,5 @@ silently hit it; the matcher is now invariant-guarded by
 | SettingsQR ingest (`SettingsQr.parse` 1:1; `settings::` routing; unit tests) | done | `90b7afb` |
 | Docs closeout (README status, roadmap, code structure, REASONING) | done | `48e7301` |
 | Docs audit + build_instructions verification suite + CrosscheckPsbtParser bug fix | done | `7fe6eed` |
+| Audit-fix pass: A1–A6 + B1–B10 + C1–C7, kwargs `instantiateView`, `ViewInstantiationTest`, on-device E2E partial | done | `eeaaa16` (+ `5e80cd3` docs) |
+| Documentation review pass (D1–D7; dice/tips values recomputed) + `:app:test` in CI | done | this session |

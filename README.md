@@ -32,7 +32,7 @@ Any Android phone with a camera. For maximum security use a dedicated phone with
 
 ## Install
 
-1. Build the APK ([docs/build_instructions.md](docs/build_instructions.md)) or download a release and verify it.
+1. Build the APK ([docs/build_instructions.md](docs/build_instructions.md)). (No signed releases exist yet — see the "Beyond" section of [docs/feature_roadmap.md](docs/feature_roadmap.md).)
 2. `adb install app/build/outputs/apk/debug/app-debug.apk` (or open the APK on the phone).
 3. Grant the camera permission — it is the app's only permission.
 
@@ -54,4 +54,4 @@ Any Android phone with a camera. For maximum security use a dedicated phone with
 
 ## Status
 
-**[v0.4 feature scope complete]** — `core` (crypto, PSBT, UR2, descriptors, vendored ZXing) and the full `app` (scan, seed load/create/backup, SeedQR transcribe, xpub export, PSBT sign incl. multisig descriptor change verification, message signing, BIP-85, address verification + explorer, Electrum seeds, SettingsQR) are built and unit-tested; crypto is byte-identical to upstream (11 differential crosschecks in `tools/`). On-device end-to-end test pending. See [docs/feature_roadmap.md](docs/feature_roadmap.md) for the item-level status and [docs/current-task.md](docs/current-task.md) for the remaining deltas.
+**[v0.4 feature scope complete]** — `core` (crypto, PSBT, UR2, descriptors, vendored ZXing) and the full `app` (scan, seed load/create/backup, SeedQR transcribe, xpub export, PSBT sign incl. multisig descriptor change verification, message signing, BIP-85, address verification + explorer, Electrum seeds, SettingsQR) are built and unit-tested; crypto is byte-identical to upstream (11 differential crosschecks in `tools/`). On-device E2E on the emulator: app launch, settings persistence, seed creation (dice → words → finalize), xpub export, and seed discard verified; QR scan-in and PSBT signing flows still pending (need a camera source on the dev host — see [docs/current-task.md](docs/current-task.md)). See [docs/feature_roadmap.md](docs/feature_roadmap.md) for the item-level status and [docs/current-task.md](docs/current-task.md) for the remaining deltas.

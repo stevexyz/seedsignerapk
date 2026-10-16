@@ -268,8 +268,6 @@ class SeedTranscribeSeedQRZoomedInView : View() {
 
         // Zone guideline grid (upstream draws #bbb lines between modules,
         // skipping the outer QR border) plus a heavier line every zone.
-        // Zone guideline grid (upstream draws #bbb lines between modules,
-        // skipping the outer QR border) plus a heavier line every zone.
         val canvas = base.copy(Bitmap.Config.ARGB_8888, true)
         val paint = Paint()
         val offset = borderModules * pixelsPerModule
@@ -354,11 +352,13 @@ class SeedTranscribeSeedQRConfirmScanView : ScanView() {
 
         // Upstream SeedQrDecoder types: numeric SeedQR (12/24 words of 4
         // digits), compact binary bytes, or a plain mnemonic string.
-        val recovered: List<String>? = if (ur.type == "bytes") {
-            com.seedsigner.core.crypto.Bip39.mnemonicFromEntropy(ur.cbor)?.split(" ")
-        } else {
-            SeedQrDecoderKt.decodeSeedQr(raw)
-        }
+        // Our scanner labels every non-UR QR "raw" (upstream distinguishes
+        // SEED__SEEDQR from SEED__COMPACTSEEDQR at the protocol level), so
+        // the compact path tries both: text first, then the raw bytes as
+        // compact-SeedQR entropy (16/32 bytes -> 12/24 words, checksum
+        // recomputed — exactly upstream's bip39.mnemonic_from_bytes).
+        val recovered: List<String>? = SeedQrDecoderKt.decodeSeedQr(raw)
+            ?: SeedQrDecoderKt.decodeCompactSeedQr(ur.cbor)
         if (recovered != null) {
             return if (recovered != seed.mnemonicList) {
                 Destination(SeedTranscribeSeedQRConfirmWrongSeedView::class.java,
@@ -458,6 +458,27 @@ internal object SeedQrDecoderKt {
         }
     } catch (e: Exception) {
         null
+    }
+
+    /**
+     * Compact SeedQR (byte mode) -> mnemonic. The grid holds the 11-bit
+     * word indices minus the trailing checksum bits: 128 bits (16 bytes)
+     * for 12 words, 256 bits (32 bytes) for 24 words — i.e. exactly the
+     * BIP-39 entropy, so the checksum word is recomputed on the way back
+     * (upstream: bip39.mnemonic_from_bytes). Returns null when the payload
+     * is not a compact SeedQR.
+     * Caveat: the scanned bytes went through ZXing's charset guess -> String
+     * round-trip (byte mode is not exposed by the vendored reader), so a
+     * corrupted read yields a wrong/invalid mnemonic — a safe failure, the
+     * confirm step compares against the known seed.
+     */
+    fun decodeCompactSeedQr(bytes: ByteArray): List<String>? {
+        if (bytes.size != 16 && bytes.size != 32) return null
+        return try {
+            com.seedsigner.core.crypto.Bip39.mnemonicFromEntropy(bytes).split(" ")
+        } catch (e: Exception) {
+            null
+        }
     }
 }
 

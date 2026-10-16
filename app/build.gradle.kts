@@ -15,7 +15,9 @@ android {
         minSdk = 28
         targetSdk = 34
         versionCode = 1
-        versionName = "0.0.1"
+        // Kept in sync with VersionView (Settings → Version) and the README
+        // status line — do not bump one without the other.
+        versionName = "0.4.0"
     }
 
     buildTypes {

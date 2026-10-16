@@ -58,7 +58,7 @@ class SeedWordsWarningView(
         // Only one exit point.
         return Destination(SeedWordsView::class.java,
             viewArgs = mapOf(
-                "seed" to activeSeed(), "pageIndex" to 0,
+                "seed" to activeSeed(), "seedIndex" to seedIndex, "pageIndex" to 0,
                 "bip85ChildIndex" to bip85ChildIndex, "bip85NumWords" to bip85NumWords
             ), skipCurrentView = true)
     }

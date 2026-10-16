@@ -83,8 +83,8 @@ internal object DescriptorQr {
                 }
                 label.length == 8 -> {
                     if (xpubs.isEmpty()) repeat(n) { xpubs.add(emptyMap()) }
-                    require(xpubs.size > xpubs.indexOfFirst { it.isEmpty() })
                     val slot = xpubs.indexOfFirst { it.isEmpty() }
+                    require(slot >= 0) { "bad or missing xpub" }
                     xpubs[slot] = mapOf("xfp" to label, "key" to value)
                 }
             }
@@ -241,7 +241,7 @@ class LoadMultisigWalletDescriptorView : View() {
 class MultisigWalletDescriptorView : View() {
 
     override fun run(activity: Activity): Destination? {
-        val descriptor = controller.multisigWalletDescriptor as? Descriptor
+        val descriptor = controller.multisigWalletDescriptor
             ?: throw Exception("Routing error: multisig_wallet_descriptor hasn't been set")
         val (m, n) = getMultisigPolicy(descriptor)
 
@@ -255,7 +255,7 @@ class MultisigWalletDescriptorView : View() {
         val button: String = when {
             flow == Controller.Flow.PSBT -> "Return to transaction"
             flow == Controller.Flow.VERIFY_MULTISIG_ADDR && controller.unverifiedAddress != null ->
-                "Verify addr ${controller.unverifiedAddress!!["address"]!!}.substring(0, 7)}"
+                "Verify addr ${(controller.unverifiedAddress!!["address"] as String).take(7)}"
             flow == Controller.Flow.ADDRESS_EXPLORER -> "Address explorer"
             else -> "OK"
         }

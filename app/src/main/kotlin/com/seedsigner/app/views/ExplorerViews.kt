@@ -115,8 +115,7 @@ class ToolsAddressExplorerAddressTypeView(
             screen.addText("Seed ${it.getFingerprint(network)}", 14f, 0xFF9E9E9E.toInt())
         }
         if (seed == null) {
-            val descriptor = controller.multisigWalletDescriptor as? com.seedsigner.core.descriptor.Descriptor
-            descriptor?.let {
+            controller.multisigWalletDescriptor?.let {
                 val (m, n) = com.seedsigner.core.descriptor.getMultisigPolicy(it)
                 screen.addText("$m / $n multisig", 14f, 0xFF9E9E9E.toInt())
             }

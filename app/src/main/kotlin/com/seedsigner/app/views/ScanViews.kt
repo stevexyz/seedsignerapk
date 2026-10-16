@@ -48,13 +48,18 @@ open class ScanView : View() {
         }
         scanner = cam
 
-        // start the camera only once the preview surface exists
+        // start the camera only once the preview surface exists; stop it
+        // when the surface goes away (e.g. activity destroy/rotation) so the
+        // camera session is never leaked or double-opened
         preview.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(s: android.graphics.SurfaceTexture, w: Int, h: Int) {
                 cam.start()
             }
             override fun onSurfaceTextureSizeChanged(s: android.graphics.SurfaceTexture, w: Int, h: Int) {}
-            override fun onSurfaceTextureDestroyed(s: android.graphics.SurfaceTexture): Boolean = true
+            override fun onSurfaceTextureDestroyed(s: android.graphics.SurfaceTexture): Boolean {
+                cam.stop()
+                return true
+            }
             override fun onSurfaceTextureUpdated(s: android.graphics.SurfaceTexture) {}
         }
         if (preview.isAvailable) cam.start()

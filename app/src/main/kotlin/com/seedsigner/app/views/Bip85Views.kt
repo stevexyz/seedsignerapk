@@ -73,6 +73,7 @@ class SeedBIP85SelectChildIndexView(
         return Destination(SeedWordsWarningView::class.java,
             viewArgs = mapOf(
                 "seed" to controller.storage.seeds[seedIndex],
+                "seedIndex" to seedIndex,
                 "bip85ChildIndex" to childIndex.toInt(),
                 "bip85NumWords" to numWords
             ))

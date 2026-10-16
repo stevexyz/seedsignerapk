@@ -211,7 +211,7 @@ class SeedAddressVerificationView(
         if (!isMultisig) {
             if (seed == null) throw Exception("Can't validate a single sig addr without specifying a seed")
         }
-        val descriptor = controller.multisigWalletDescriptor as? com.seedsigner.core.descriptor.Descriptor
+        val descriptor = controller.multisigWalletDescriptor
         if (isMultisig && descriptor == null) {
             // Upstream requires the descriptor to have been loaded first.
             return Destination(ErrorView::class.java,

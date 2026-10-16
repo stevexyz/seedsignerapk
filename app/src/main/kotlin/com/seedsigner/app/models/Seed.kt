@@ -191,6 +191,12 @@ class Bip39Seed(
  * Upstream quirks kept: the base passphrase is NFKD-normalized like BIP-39,
  * but the Electrum passphrase override is lowercased + whitespace-collapsed
  * (and NOT NFKD-normalized) before being concatenated into the PBKDF2 salt.
+ *
+ * Note: the base class init calls the virtual `_generateSeed()`, which by
+ * that point already dispatches to this override (Kotlin dynamic dispatch),
+ * so no regeneration in a subclass init block is needed. The override only
+ * reads `_passphrase` (a computed getter recomputation), which is safe to
+ * touch during base init.
  */
 class ElectrumSeed(
     mnemonic: List<String>,
@@ -200,12 +206,6 @@ class ElectrumSeed(
 
     private val _electrumPassphrase: String
         get() = if (_passphrase.isNotEmpty()) normalizeElectrumPassphrase(_passphrase) else ""
-
-    init {
-        // The base init generated the seed before this subclass existed:
-        // regenerate now that the passphrase override is available.
-        _generateSeed()
-    }
 
     override fun _generateSeed() {
         if (mnemonicList.size != 12) {

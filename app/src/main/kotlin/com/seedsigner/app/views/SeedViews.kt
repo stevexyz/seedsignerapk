@@ -516,14 +516,20 @@ class SeedReviewPassphraseView : View() {
 
 /**
  * 1:1 port of upstream SeedDiscardView: confirm removal of an in-memory seed.
+ * Upstream's `seed=None` flavor discards the PENDING seed instead — used by
+ * the calc-final-word flow (no viewArgs) and the generated-seed paths.
  */
 class SeedDiscardView : View() {
 
-    private var seedIndex: Int = 0
+    private var seedIndex: Int? = null
+
+    private val isPendingSeed: Boolean get() = seedIndex == null
 
     override fun run(activity: Activity): Destination? {
-        seedIndex = (viewArgs["seedIndex"] as? Int) ?: 0
-        val seed = controller.storage.seeds[seedIndex]
+        seedIndex = viewArgs["seedIndex"] as? Int
+        val seed = if (isPendingSeed) controller.storage.pendingSeed
+                   else controller.storage.seeds[seedIndex!!]
+        if (seed == null) return Destination(MainMenuView::class.java, clearHistory = true)
         val network = controller.settings.getValue<String>(Settings.Const.SETTING__NETWORK)
         val screen = Ui.screen(activity, "Remove seed ${seed.getFingerprint(network)}?", showBack = false)
         screen.addText("The seed is only in memory and will be gone for good.")
@@ -535,10 +541,17 @@ class SeedDiscardView : View() {
     override fun onResult(index: Int): Destination {
         return when (index) {
             0 -> {
-                controller.storage.seeds.removeAt(seedIndex)
-                Destination(SeedsMenuView::class.java, clearHistory = true)
+                if (isPendingSeed) controller.storage.discardPendingMnemonic()
+                else controller.storage.seeds.removeAt(seedIndex!!)
+                Destination(MainMenuView::class.java, clearHistory = true)
             }
-            else -> Destination(SeedOptionsView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
+            // Upstream KEEP skips this warning from history; for a stored
+            // seed the caller (SeedOptionsView) is the sensible landing spot.
+            else -> if (isPendingSeed) {
+                Destination(BackStackView::class.java, skipCurrentView = true)
+            } else {
+                Destination(SeedOptionsView::class.java, viewArgs = mapOf("seedIndex" to seedIndex))
+            }
         }
     }
 }

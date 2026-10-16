@@ -4,6 +4,7 @@ import android.app.Activity
 import android.util.Log
 import com.seedsigner.app.views.MainMenuView
 import com.seedsigner.app.views.OpeningSplashView
+import com.seedsigner.core.descriptor.Descriptor
 import com.seedsigner.core.psbt.Psbt
 import com.seedsigner.core.psbt.PsbtParser
 import com.seedsigner.app.models.Seed
@@ -37,9 +38,8 @@ class Controller private constructor() {
     var psbt: Psbt? = null
     var psbtSeed: Seed? = null
     var psbtParser: PsbtParser? = null
-    // v0.3: the user-supplied multisig wallet descriptor (typed when the
-    // descriptor model lands); null until then.
-    var multisigWalletDescriptor: Any? = null
+    // v0.3: the user-supplied multisig wallet descriptor; null until scanned.
+    var multisigWalletDescriptor: Descriptor? = null
 
     // Image-entropy working state (upstream controller attrs): the pooled
     // preview frames (packed Y planes) and the final still capture.
@@ -242,26 +242,48 @@ class Controller private constructor() {
     }
 
     /**
-     * Instantiate a View from its Destination: no-arg constructor when there
-     * are no viewArgs, otherwise the constructor whose parameter names
-     * (Kotlin compiles with -java-parameters) exactly match the viewArgs keys.
-     * Mirrors upstream's `View_cls(**view_args)`.
+     * Instantiate a View from its Destination. Mirrors upstream's
+     * `View_cls(**view_args)` (Python kwargs: every named parameter not
+     * present in view_args keeps its default).
+     *
+     * Constructor reality (Kotlin 1.9, -java-parameters, see
+     * ViewInstantiationTest): a View compiles to
+     *   (1) a no-arg constructor,
+     *   (2) the real N-param constructor with real parameter names, and
+     *   (3) synthetic defaulting bridges whose names are "arg0", "arg1",...
+     * Rule: no viewArgs -> (1). Otherwise, when every viewArgs key names a
+     * parameter of (2), use (2) — present keys are bound, absent keys take
+     * the parameter defaults. Otherwise fall back to (1): the view reads
+     * the `viewArgs` field directly (assigned by [runView] right after).
+     * The "at most one named constructor per View" invariant that makes this
+     * unambiguous is enforced by ViewInstantiationTest.
      */
     private fun instantiateView(dest: Destination): View {
         val cls = dest.ViewCls!!
         val args = dest.viewArgs
-        if (args.isEmpty()) return cls.getDeclaredConstructor().newInstance() as View
-        // Views that read viewArgs directly (no matching constructor) fall
-        // back to the no-arg constructor; view.viewArgs is assigned by the
-        // caller either way.
-        val ctor = cls.declaredConstructors.firstOrNull {
-            it.parameters.size == args.size &&
-                args.keys.all { k -> it.parameters.any { p -> p.name == k } }
-        } ?: cls.getDeclaredConstructor()
+        // The real constructor: non-synthetic, real parameter names
+        // (synthetic defaulting bridges compile to arg0/arg1/... or $names).
+        val named = cls.declaredConstructors.firstOrNull { c ->
+            c.parameters.isNotEmpty() &&
+                c.parameters.all { p ->
+                    p.name.isNotEmpty() && !p.name.startsWith("$") && !p.name.startsWith("arg")
+                }
+        }
+        val ctor = if (args.isNotEmpty() && named != null &&
+            named.parameters.all { it.name in args || !it.type.isPrimitive }) {
+            named
+        } else {
+            cls.getDeclaredConstructor()
+        }
         ctor.isAccessible = true
         return if (ctor.parameters.isEmpty()) {
             ctor.newInstance() as View
         } else {
+            // Present keys bind; absent keys arrive as null. Absent keys are
+            // only tolerated for reference-type parameters (nullable Kotlin
+            // params, whose defaults are null anyway, e.g. `seed: Seed? =
+            // null`); non-null Int/Boolean params are primitives and are
+            // rejected up front, so no non-null default is ever clobbered.
             ctor.newInstance(*ctor.parameters.map { args[it.name] }.toTypedArray()) as View
         }
     }

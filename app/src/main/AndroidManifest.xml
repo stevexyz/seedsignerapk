@@ -11,8 +11,8 @@
         android:required="true" />
 
     <!--
-      android:allowBackup="false" + android:fullBackupContent: secrets are
-      memory-only (spec.md §1.2); nothing may be serialized into a backup.
+      android:allowBackup="false": secrets are memory-only (spec.md §1.2);
+      nothing may be serialized into a backup.
     -->
     <application
         android:label="SeedSigner"
@@ -21,7 +21,8 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -1,6 +1,7 @@
 package com.seedsigner.app.views
 
 import android.app.Activity
+import java.util.Locale
 import com.seedsigner.app.BackStackView
 import com.seedsigner.app.Controller
 import com.seedsigner.app.Destination
@@ -34,7 +35,9 @@ import com.seedsigner.core.psbt.PsbtSurplusDerivationPathsError
 /** satoshis -> "X.XXXXXXXX BTC" (upstream shows BTC; sats in parentheses). */
 private fun fmtAmount(sats: Long): String {
     val btc = sats / 100_000_000.0
-    return String.format("%.8f BTC (%d sat)", btc, sats)
+    // Locale.US: a device locale like de_DE would render a comma decimal
+    // ("1,2345 BTC") and break the documented format.
+    return String.format(Locale.US, "%.8f BTC (%d sat)", btc, sats)
 }
 
 /** Upstream PSBTSelectSeedView. */
@@ -350,7 +353,7 @@ class PSBTChangeDetailsView : View() {
 
         // Multisig is verified here rather than during the initial parse
         // because the descriptor only arrives mid-flow (upstream comment).
-        val descriptor = controller.multisigWalletDescriptor as? com.seedsigner.core.descriptor.Descriptor
+        val descriptor = controller.multisigWalletDescriptor
         var isChangeAddrVerified = !p.isMultisig
         if (p.isMultisig) {
             if (descriptor != null) {
@@ -386,28 +389,24 @@ class PSBTChangeDetailsView : View() {
     override fun onResult(index: Int): Destination {
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
         val p = controller.psbtParser!!
-        val descriptor = controller.multisigWalletDescriptor as? com.seedsigner.core.descriptor.Descriptor
+        val descriptor = controller.multisigWalletDescriptor
         val isMultisigPending = p.isMultisig && descriptor == null
 
-        return when {
-            // "Next" (index 0 when no multisig prompt) / "Skip verification" (index 1)
-            isMultisigPending && index == 0 -> {
-                // Load the known-good descriptor (upstream FLOW__PSBT resume).
-                controller.resumeMainFlow = Controller.Flow.PSBT
-                Destination(LoadMultisigWalletDescriptorView::class.java)
+        // "Verify multisig addr" is index 0 while the prompt is up; index 1
+        // is "Skip verification". Without the prompt, index 0 is "Next".
+        return if (isMultisigPending && index == 0) {
+            // Load the known-good descriptor (upstream FLOW__PSBT resume).
+            controller.resumeMainFlow = Controller.Flow.PSBT
+            Destination(LoadMultisigWalletDescriptorView::class.java)
+        } else {
+            if (changeAddressNum < p.numChangeOutputs - 1) {
+                Destination(PSBTChangeDetailsView::class.java, viewArgs = mapOf("changeAddressNum" to changeAddressNum + 1))
+            } else if (p.opReturnData != null) {
+                Destination(PSBTOpReturnView::class.java)
+            } else {
+                // No more change to verify. Move on to sign the PSBT.
+                Destination(PSBTFinalizeView::class.java)
             }
-            !isMultisigPending || index == 1 -> {
-                if (changeAddressNum < p.numChangeOutputs - 1) {
-                    Destination(PSBTChangeDetailsView::class.java, viewArgs = mapOf("changeAddressNum" to changeAddressNum + 1))
-                } else if (p.opReturnData != null) {
-                    Destination(PSBTOpReturnView::class.java)
-                } else {
-                    // No more change to verify. Move on to sign the PSBT.
-                    Destination(PSBTFinalizeView::class.java)
-                }
-            }
-            // "Verify multisig addr" (v0.3 feature: descriptor loading)
-            else -> Destination(LoadMultisigWalletDescriptorView::class.java)
         }
     }
 }

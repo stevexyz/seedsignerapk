@@ -399,8 +399,6 @@ class PsbtParser(
     }
 
     fun parse(): Boolean {
-        if (psbt == null) return false
-
         setRoot(seedBytes)
 
         val childKeyDerivationCache = mutableMapOf<Pair<Int, List<Int>>, Pair<Bip32.HDKey, Bip32.HDKey>>()

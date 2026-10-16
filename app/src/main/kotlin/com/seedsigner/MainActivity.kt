@@ -21,6 +21,9 @@ class MainActivity : Activity() {
         setContentView(android.widget.FrameLayout(this))
 
         val controller = Controller.instance
+        // Restore persisted settings before any flow reads them (spec §1.4:
+        // plain file in app-private storage; the only file the app ever reads).
+        controller.settings.load(this)
         controller.attachActivity(this)
         controller.start()
     }

@@ -26,10 +26,13 @@ class QrDisplayView : View() {
         const val PART_INTERVAL_MS = 2000L
     }
 
-    private val parts: List<String> = viewArgs["parts"] as List<String>
-    private val title: String = (viewArgs["title"] as? String) ?: "Display QR"
+    // viewArgs is assigned by the Controller AFTER construction, so it must
+    // not be read in plain property initializers (see View.kt) — lazy keeps
+    // this correct while reading once.
+    private val parts: List<String> by lazy { viewArgs["parts"] as List<String> }
+    private val title: String by lazy { (viewArgs["title"] as? String) ?: "Display QR" }
     /** Upstream QR displays return to the main menu when done. */
-    private val returnToMain: Boolean = (viewArgs["returnToMain"] as? Boolean) ?: false
+    private val returnToMain: Boolean by lazy { (viewArgs["returnToMain"] as? Boolean) ?: false }
 
     private val handler = Handler(Looper.getMainLooper())
     private var index = 0

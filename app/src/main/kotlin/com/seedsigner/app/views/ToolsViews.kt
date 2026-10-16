@@ -104,7 +104,10 @@ class ToolsImageEntropyLivePreviewView : View() {
         preview.surfaceTextureListener = object : android.view.TextureView.SurfaceTextureListener {
             override fun onSurfaceTextureAvailable(s: android.graphics.SurfaceTexture, w: Int, h: Int) { cam.start() }
             override fun onSurfaceTextureSizeChanged(s: android.graphics.SurfaceTexture, w: Int, h: Int) {}
-            override fun onSurfaceTextureDestroyed(s: android.graphics.SurfaceTexture): Boolean = true
+            override fun onSurfaceTextureDestroyed(s: android.graphics.SurfaceTexture): Boolean {
+                cam.stop()
+                return true
+            }
             override fun onSurfaceTextureUpdated(s: android.graphics.SurfaceTexture) {}
         }
         if (preview.isAvailable) cam.start()
@@ -205,7 +208,10 @@ class ToolsImageEntropyFinalImageView : View() {
                 takeShot()
             }
             override fun onSurfaceTextureSizeChanged(s: android.graphics.SurfaceTexture, w: Int, h: Int) {}
-            override fun onSurfaceTextureDestroyed(s: android.graphics.SurfaceTexture): Boolean = true
+            override fun onSurfaceTextureDestroyed(s: android.graphics.SurfaceTexture): Boolean {
+                cam.stop()
+                return true
+            }
             override fun onSurfaceTextureUpdated(s: android.graphics.SurfaceTexture) {}
         }
         if (preview.isAvailable) {

@@ -72,8 +72,11 @@ class UnhandledExceptionView : View() {
                 Destination(null)
             }
             1 -> {
+                // True "power off": finish AND kill the process so no seed
+                // survives in a backgrounded process (spec §1.2 semantics).
                 controller.finishFlow()
                 activity.finishAffinity()
+                android.os.Process.killProcess(android.os.Process.myPid())
                 Destination(null)
             }
             else -> Destination(MainMenuView::class.java, clearHistory = true)

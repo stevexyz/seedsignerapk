@@ -15,8 +15,10 @@ import com.seedsigner.app.models.Settings
  */
 class SettingsMenuView : View() {
 
-    private val visibility: Int =
+    // lazy: viewArgs is assigned by the Controller after construction.
+    private val visibility: Int by lazy {
         (viewArgs["visibility"] as? Int) ?: Settings.Const.VISIBILITY__GENERAL
+    }
 
     override fun run(activity: Activity): Destination? {
         val c = Settings.Const
@@ -76,7 +78,8 @@ class SettingsMenuView : View() {
  */
 class SettingsEntryUpdateView : View() {
 
-    private val attrName: String = viewArgs["attrName"] as String
+    // lazy: viewArgs is assigned by the Controller after construction.
+    private val attrName: String by lazy { viewArgs["attrName"] as String }
     private val entry: Settings.Entry by lazy { controller.settings.getEntry(attrName) }
 
     override fun run(activity: Activity): Destination? {
@@ -119,6 +122,9 @@ class SettingsEntryUpdateView : View() {
             else if (index == 0) c.OPTION__ENABLED else c.OPTION__DISABLED
             controller.settings.setValue(attrName, value)
         }
+        // Persist every change (upstream saves on each settings update); the
+        // file is app-private and never holds secrets.
+        controller.settings.save(activity)
         return Destination(SettingsMenuView::class.java)
     }
 }
@@ -128,7 +134,8 @@ class VersionView : View() {
 
     override fun run(activity: Activity): Destination? {
         val screen = Ui.screen(activity, "Version")
-        screen.addText("SeedSigner v0.0.1 (Android port)")
+        // Keep in sync with versionName in app/build.gradle.kts.
+        screen.addText("SeedSigner v0.4.0 (Android port)")
         screen.addText("Experimental release — not for production use")
         screen.addButtons(listOf("Back"))
         controller.showScreen(screen)

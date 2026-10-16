@@ -41,6 +41,12 @@ class Destination(
 
 abstract class View {
     lateinit var activity: Activity
+
+    /**
+     * Assigned by the Controller AFTER construction (instantiateView runs
+     * first). Never read it in a plain property initializer — that sees the
+     * empty map. Read it in run()/onResult(), or via `by lazy { ... }`.
+     */
     var viewArgs: Map<String, Any?> = emptyMap()
     val controller: Controller = Controller.instance
     var isScreensaverAllowed: Boolean = true

@@ -30,7 +30,7 @@ The corresponding 24 seed words are:
 
 ## Creating a seed via dice rolls in the app
 
-Open the app, go to the **Tools** menu and select **New Seed** (with the dice icon). Select **24 words (99 rolls)** and enter the dice numbers one after another (on-screen input, no physical keys involved). After the last roll, the 24 seed words are shown.
+Open the app, go to the **Tools** menu and select **New seed (dice)**. Select **24 words (99 rolls)** and enter the dice numbers one after another (on-screen input, no physical keys involved). After the last roll, the 24 seed words are shown.
 
 The screenshots below are from the original Raspberry Pi SeedSigner build, included for reference; the Android screens follow the same flow.
 
@@ -80,7 +80,7 @@ On the app go to the seed just created and tap 'Export Xpub':
 
 Follow these menu entries in the app:
 
-> Export Xpub --> Single Sig --> Native Segwit --> Sparrow
+> Export Xpub --> Single Sig --> Native Segwit --> Static (works with Sparrow)
 
 <img src="img/dicedoc/sesi_export_xpub_2.png" width="600">
 

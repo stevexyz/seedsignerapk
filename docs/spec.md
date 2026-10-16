@@ -19,9 +19,10 @@ Single source of truth for what the app must and must not do. Other docs link he
 ### 1.3 No external dependencies — the repo is the entire build input
 - The build declares **zero third-party dependencies**. `git clone` + Gradle must produce the APK from this repo alone (plus the public JDK/Android SDK toolchain). Nothing is downloaded at build time.
 - Allowed: the Android SDK/framework, the Kotlin toolchain, and **vendored source** — code copied into this repo where its license allows.
+- Test-scope carve-out: `testImplementation` dependencies (JUnit, `kotlin.test`) are build-time only and never packaged into the APK; the audit below applies to the app's runtime classpath.
 - Every vendored module is recorded in `VENDORED.md` with: origin project, exact version/commit, download URL, SHA-256 of the original release, and license. The copy must stay diff-able against the official release.
 - Vendor the **minimal** subset that is needed; delete everything else.
-- Audit: the full dependency tree of every module contains only platform artifacts.
+- Audit: the full *runtime* dependency tree of every module contains only platform artifacts (test-scope artifacts excluded, see above).
 
 ### 1.4 Minimal Google dependency
 - Use the classic Android framework, which is in the SDK.

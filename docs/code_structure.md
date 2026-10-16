@@ -20,9 +20,9 @@ Mirrors upstream's Model-View-Controller 1:1, so the port can be audited side by
 
 - **One Activity** (`MainActivity`) hosts one screen at a time.
 - **Screen (View)**: one class per screen, same role as an upstream `View` — renders, handles touch input, decides the next screen. The flow views live in `app/views/` grouped by upstream file (`SeedViews`, `XpubViews`, `PsbtViews`, `ScanViews`, ...).
-- **Controller**: a small singleton router that swaps screens (upstream's `Controller` minus the hardware layer) and holds the working flow state (seeds, working PSBT, back stack).
+- **Controller**: a small singleton router that swaps screens (upstream's `Controller` minus the hardware layer); holds the working flow state (working PSBT, back stack) and references to the models below.
 - **`Ui` / `QrDisplay`**: screen-building helpers and QR rendering (bitmaps from the `core` encoder).
-- **`models`**: `Settings` (plain file in app-private storage) + `SettingsQr` (SettingsQR parse), `Seed` (abstract; `Bip39Seed` / `ElectrumSeed`, memory-only), `SeedStorage`, `Derivation`.
+- **`models`**: `Settings` (plain file in app-private storage, loaded on start, saved on every change) + `SettingsQr` (SettingsQR parse), `Seed` (abstract; `Bip39Seed` / `ElectrumSeed`, memory-only), `SeedStorage` (the in-memory seed list), `Derivation`.
 - View files added in v0.3/v0.4: `AddressViews`, `ExplorerViews`, `DescriptorViews`, `MessageSignViews`, `Bip85Views`, `SeedWordsViews`, `SeedBackupViews` (SeedQR transcribe chain + `SeedQrEncoder`).
 - **Camera in**: platform `android.hardware.camera2`; frames go to the `core` decoder.
 - **QR out**: an animated view cycling the UR2 parts (2 s per part, upstream cadence).
@@ -35,7 +35,7 @@ Why this shape: upstream is already screen-based MVC (see `seedsigner_orig/docs/
 | ------- | ------------- | ------------ |
 | Screen loop | `while True` per View | View lifecycle + event handlers |
 | Routing | `Controller` singleton | Same singleton `Controller`, event-driven instead of blocking loop |
-| Settings | `settings.ini` on SD card | Plain file, app-private storage |
+| Settings | `settings.ini` on SD card | Plain file, app-private storage (load on start, save on change) |
 | Seed storage | RAM, wiped on power off | RAM, wiped on process death |
 | Input | 4 buttons + joystick (GPIO) | Touchscreen |
 | QR in/out | Camera / LCD | Camera2 / animated View (same protocols) |

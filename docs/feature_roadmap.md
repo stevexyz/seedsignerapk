@@ -18,7 +18,7 @@ Binding requirements: [spec.md](spec.md). First real milestone: end-to-end flow 
 * ✅ Load seed: word entry + SeedQR scan
 * ✅ xpub export (single sig + multisig)
 * ✅ PSBT scan → review → sign
-* ✅ Settings (network), plain-file persistence
+* ✅ Settings (network), plain-file persistence (load on start, save on every change + SettingsQR ingest)
 * ✅ CI: build + unit tests (`.github/workflows/ci.yml`: `:core:test` + `:app:assembleDebug`)
 
 ## v0.2 — Seed creation (mostly done; CompactSeedQR dot-grid deferred)

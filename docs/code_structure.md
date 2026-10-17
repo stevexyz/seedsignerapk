@@ -9,7 +9,7 @@ Two modules, one rule: **`core` never imports Android.**
 | `crypto` | secp256k1, BIP39, BIP32, SLIP-0132, hashes, Base58, Bech32/32m, addresses, networks |
 | `tx` | transaction + script types (BIP-174 data model, sighash) |
 | `psbt` | parse, validate, sign, plus the `PsbtParser` review layer (policy, change detection, forged-claim rejection) |
-| `qr` | UR2 encode/decode (fountain), the `urtypes` crypto payload builders; the `qr/zxing` decoders wrap the vendored ZXing (separate `com.google.zxing` package under `core/src/main/java/` — see `VENDORED.md`) |
+| `qr` | UR2 encode/decode (fountain), the `urtypes` crypto payload builders, split-QR segment reassembly (Specter `p{N}of{M}` base64 + BBQr `B$…` hex/base32/zlib, `SplitQrDecoders.kt`); the `qr/zxing` decoders wrap the vendored ZXing (separate `com.google.zxing` package under `core/src/main/java/` — see `VENDORED.md`) |
 | `descriptor` | basic-multisig wallet descriptors (1:1 of embit's `descriptor` package: `AllowedDerivation`, `Key`, `Multi`/`Sortedmulti`, `Descriptor`, `getMultisigAddress`, `getMultisigPolicy`) |
 
 Everything in `core` is verified byte-identical to upstream per [spec.md §3](spec.md#3-correctness).

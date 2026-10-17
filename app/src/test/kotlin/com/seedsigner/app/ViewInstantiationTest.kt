@@ -41,6 +41,8 @@ class ViewInstantiationTest {
         // ScanViews
         ScanView::class.java,
         ScanResultView::class.java,
+        ScanSpecterPsbtView::class.java,
+        ScanBbqrPsbtView::class.java,
         // SeedViews
         SeedsMenuView::class.java,
         LoadSeedView::class.java,

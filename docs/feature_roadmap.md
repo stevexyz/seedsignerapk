@@ -17,7 +17,7 @@ Binding requirements: [spec.md](spec.md). First real milestone: end-to-end flow 
 * ✅ Camera QR scanning (camera2 + `core` decoder), animated on-screen QR display
 * ✅ Load seed: word entry + SeedQR scan
 * ✅ xpub export (single sig + multisig)
-* ✅ PSBT scan → review → sign
+* ✅ PSBT scan → review → sign — every upstream QR format: byte-mode (Sparrow static), base64, base43, UR2 (fountain) and the two animated split formats (Specter `p{N}of{M}` base64, BBQr `B$…`), all reassembling to the identical PSBT (`:core:test` SplitQrDecodersTest)
 * ✅ Settings (network), plain-file persistence (load on start, save on every change + SettingsQR ingest)
 * ✅ CI: build + unit tests (`.github/workflows/ci.yml`: `:core:test` + `:app:test` + `:app:assembleDebug`)
 

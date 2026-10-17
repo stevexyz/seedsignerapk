@@ -25,13 +25,13 @@ import java.nio.ByteBuffer
  * `QRCodeReader` with 4-rotation retry (the pinned ZXing 3.5.4 detector
  * limitation, see VENDORED.md, is mitigated by the rotation sweep).
  *
- * Decoding happens on a background HandlerThread; [onQrText] is invoked
+ * Decoding happens on a background HandlerThread; [onQrBytes] is invoked
  * there, so the caller hops to the main thread for UI.
  */
 class CameraScanner(
     private val context: Context,
     private val preview: TextureView,
-    private val onQrText: (String) -> Unit
+    private val onQrBytes: (ByteArray) -> Unit
 ) {
     private var cameraDevice: CameraDevice? = null
     private var captureSession: android.hardware.camera2.CameraCaptureSession? = null
@@ -40,7 +40,6 @@ class CameraScanner(
     private var bgHandler: Handler? = null
     private var cameraId: String? = null
     private var running = false
-    private val reader = QRCodeReader()
 
     /**
      * Image-entropy mode: when set, frames are forwarded as packed Y planes
@@ -158,12 +157,15 @@ class CameraScanner(
             image.close()
             return
         }
-        val text = try {
+        val bytes = try {
             image.use { decode(it) }
         } catch (e: Exception) {
+            android.util.Log.w("CameraScanner", "frame decode failed", e)
             null
         }
-        if (text != null) onQrText(text)
+        if (bytes != null) {
+            onQrBytes(bytes)
+        }
     }
 
     /** Pack the Y plane of a YUV_420_888 frame contiguously. */
@@ -181,61 +183,9 @@ class CameraScanner(
         return y
     }
 
-    /**
-     * 4-rotation sweep (VENDORED.md mitigation for the pinned ZXing detector
-     * limitation). The vendored `PlanarYUVLuminanceSource` has no rotation
-     * parameter (it takes `reverseHorizontal`), so rotations are applied by
-     * re-packing the Y plane.
-     */
-    private fun decode(image: Image): String? {
-        val plane = image.planes[0]
-        val width = image.width
-        val height = image.height
-        val rowStride = plane.rowStride
-        val buf = plane.buffer
-
-        // pack the Y plane contiguously
-        val y = ByteArray(width * height)
-        for (row in 0 until height) {
-            buf.position(row * rowStride)
-            buf.get(y, row * width, width)
-        }
-
-        for (rotation in 0..3) {
-            val (rot, w, h) = when (rotation) {
-                0 -> Triple(y, width, height)
-                else -> rotate(y, width, height, rotation)
-            }
-            try {
-                val source = PlanarYUVLuminanceSource(
-                    rot, w, h, 0, 0, w, h, false
-                )
-                return reader.decode(BinaryBitmap(GlobalHistogramBinarizer(source))).text
-            } catch (e: Exception) {
-                // try next rotation
-            } finally {
-                reader.reset()
-            }
-        }
-        return null
-    }
-
-    private fun rotate(src: ByteArray, w: Int, h: Int, quarterTurns: Int): Triple<ByteArray, Int, Int> {
-        val (nw, nh) = if (quarterTurns % 2 == 0) w to h else h to w
-        val dst = ByteArray(nw * nh)
-        for (row in 0 until h) {
-            for (col in 0 until w) {
-                val v = src[row * w + col]
-                val (dc, dr) = when (quarterTurns) {
-                    1 -> col to (w - 1 - row)   // 90° CW
-                    2 -> (w - 1 - col) to (h - 1 - row)
-                    else -> (h - 1 - col) to row // 270° CW
-                }
-                dst[dr * nw + dc] = v
-            }
-        }
-        return Triple(dst, nw, nh)
-    }
+    /** Pack the Y plane and run the pure [decodeQr] on it. */
+    private fun decode(image: Image): ByteArray? =
+        decodeQr(packY(image), image.width, image.height)
 
     fun stop() {
         running = false
@@ -258,4 +208,67 @@ class CameraScanner(
         cameraDevice = null
         imageReader = null
     }
+}
+
+/**
+ * Pure Y-plane → QR payload decode, unit-testable on the JVM.
+ *
+ * Runs a 4-rotation sweep (VENDORED.md mitigation for the pinned ZXing
+ * detector limitation). Returns the payload exactly as encoded in the QR:
+ *  - byte mode: `BYTE_SEGMENTS` metadata — the raw payload bytes. The
+ *    vendored reader exposes them there (result.text goes through charset
+ *    detection and would corrupt binary payloads, result.rawBytes is the
+ *    EC-processed codeword stream, NOT the payload);
+ *  - text modes (numeric/alphanumeric): `result.text` (pure ASCII; in
+ *    numeric mode rawBytes is the packed bit stream, not the payload).
+ */
+fun decodeQr(yPlane: ByteArray, width: Int, height: Int): ByteArray? {
+    val reader = QRCodeReader()
+    for (rotation in 0..3) {
+        val (rot, w, h) = if (rotation == 0) {
+            Triple(yPlane, width, height)
+        } else {
+            rotatePlane(yPlane, width, height, rotation)
+        }
+        val source = PlanarYUVLuminanceSource(rot, w, h, 0, 0, w, h, false)
+        try {
+            val result = reader.decode(BinaryBitmap(GlobalHistogramBinarizer(source))) ?: continue
+            val segments = result.resultMetadata[com.google.zxing.ResultMetadataType.BYTE_SEGMENTS]
+            return if (segments is List<*> && segments.isNotEmpty()) {
+                (segments[0] as ByteArray).copyOf()
+            } else {
+                result.text.toByteArray(Charsets.ISO_8859_1)
+            }
+        } catch (e: Exception) {
+            // no QR at this orientation — try the next rotation
+        } finally {
+            reader.reset()
+        }
+    }
+    return null
+}
+
+/**
+ * Pure quarter-turn rotation of a row-major pixel plane (top-level so the
+ * arithmetic is unit-testable on the JVM; [CameraScanner] uses it for the
+ * 4-rotation detector sweep, VENDORED.md). Returns (rotated, newW, newH).
+ */
+fun rotatePlane(src: ByteArray, w: Int, h: Int, quarterTurns: Int): Triple<ByteArray, Int, Int> {
+    val q = ((quarterTurns % 4) + 4) % 4
+    if (q == 0) return Triple(src.copyOf(), w, h)
+    val (nw, nh) = if (q % 2 == 0) w to h else h to w
+    val dst = ByteArray(nw * nh)
+    for (row in 0 until h) {
+        for (col in 0 until w) {
+            val v = src[row * w + col]
+            // destination row must stay < nh, destination col must stay < nw
+            val (dr, dc) = when (q) {
+                1 -> col to (h - 1 - row)        // 90° CW
+                2 -> (h - 1 - row) to (w - 1 - col)
+                else -> (w - 1 - col) to row     // 270° CW
+            }
+            dst[dr * nw + dc] = v
+        }
+    }
+    return Triple(dst, nw, nh)
 }

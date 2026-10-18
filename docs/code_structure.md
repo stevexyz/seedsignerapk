@@ -24,7 +24,7 @@ Mirrors upstream's Model-View-Controller 1:1, so the port can be audited side by
 - **`Ui` / `QrDisplay`**: screen-building helpers and QR rendering (bitmaps from the `core` encoder).
 - **`models`**: `Settings` (plain file in app-private storage, loaded on start, saved on every change) + `SettingsQr` (SettingsQR parse), `Seed` (abstract; `Bip39Seed` / `ElectrumSeed`, memory-only), `SeedStorage` (the in-memory seed list), `Derivation`.
 - View files added in v0.3/v0.4: `AddressViews`, `ExplorerViews`, `DescriptorViews`, `MessageSignViews`, `Bip85Views`, `SeedWordsViews`, `SeedBackupViews` (SeedQR transcribe chain + `SeedQrEncoder`).
-- **Camera in**: platform `android.hardware.camera2`; frames go to the `core` decoder.
+- **Camera in**: platform `android.hardware.camera2` → `app/camera/CameraScanner.kt` decodes frames with the vendored ZXing (classes live in `core`, the `decodeQr`/`extractPayload` functions in the app, both unit-tested on the JVM). Payload rule: pure-ASCII QRs take `result.text`, binary QRs take all `BYTE_SEGMENTS` concatenated (the encoder may split one payload across mode segments — see REASONING.md).
 - **QR out**: an animated view cycling the UR2 parts (2 s per part, upstream cadence).
 
 Why this shape: upstream is already screen-based MVC (see `seedsigner_orig/docs/code_structure.md`), and classic Views keep the Google-artifact count at zero per [spec.md §1.4](spec.md#14-minimal-google-dependency).

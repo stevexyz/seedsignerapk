@@ -83,6 +83,9 @@ class BbqrDecoder {
     fun totalSegmentNums(segment: String): Int = base36(segment.substring(4, 6))
 
     fun add(segment: String): SegmentStatus {
+        // Defensive: callers guard with isBbqrSegment; keep a stray call out
+        // of the crash handler (the substring accessors below throw IndexOutOfBounds).
+        if (!isBbqrSegment(segment)) throw SplitQrException("Not a BBQr segment.")
         val total = totalSegmentNums(segment)
         totalSegments?.let { if (it != total) throw SplitQrException("Segment total changed unexpectedly") }
         totalSegments = total

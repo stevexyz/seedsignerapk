@@ -371,6 +371,13 @@ class ScanSpecterPsbtView(
         val ur = decodedUr ?: return Destination(BackStackView::class.java)
         val raw = String(ur.cbor, Charsets.ISO_8859_1).trim()
         val d = decoder ?: SpecterPsbtDecoder().also { decoder = it }
+        // Ignore QRs of other types while waiting for frames (any QR the
+        // camera happens to catch is forwarded here by the base scanner);
+        // keep scanning without touching the accumulator.
+        if (!d.isSpecterPsbtSegment(raw)) {
+            return Destination(ScanSpecterPsbtView::class.java,
+                viewArgs = mapOf("fresh" to false), skipCurrentView = true)
+        }
         return try {
             when (d.add(raw)) {
                 SegmentStatus.COMPLETE -> {
@@ -422,6 +429,12 @@ class ScanBbqrPsbtView(
         val ur = decodedUr ?: return Destination(BackStackView::class.java)
         val raw = String(ur.cbor, Charsets.ISO_8859_1).trim()
         val d = decoder ?: BbqrDecoder().also { decoder = it }
+        // Ignore QRs of other types while waiting for frames (see
+        // ScanSpecterPsbtView); keep scanning without touching the accumulator.
+        if (!d.isBbqrSegment(raw)) {
+            return Destination(ScanBbqrPsbtView::class.java,
+                viewArgs = mapOf("fresh" to false), skipCurrentView = true)
+        }
         return try {
             when (d.add(raw)) {
                 SegmentStatus.COMPLETE -> {

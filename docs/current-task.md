@@ -1,11 +1,10 @@
 # Current Task
 
-**Status: [in progress]** final re-check pass (user request: recheck
-everything, fix all). All camera E2E is done (table below); the PSBT
-fixture was regenerated with the change-output derivation missing ("Change:
-0 sat") and the signature is now independently BIP143-verified. Remaining:
-re-scan of the regenerated PSBT (+ b64/b43 QR types), A1 pending-seed
-branch, full re-check, commit.
+**Status: done.** Every scan path is E2E-verified through the real camera
+pipeline (table below), the final re-check is complete, and all bugs the
+pass surfaced are fixed + regression-tested (mixed-segment QR truncation,
+accumulation-view NPE, stale-APK/disk-full install). Remaining: commit,
+then user pushes.
 
 ## Restart here
 
@@ -14,15 +13,14 @@ branch, full re-check, commit.
 | Emulator | `seedtest` AVD (pixel_7, android-34 google_apis x86_64, KVM, headless) in `~/toolchain/android-sdk/`; boot: `~/toolchain/android-sdk/emulator/emulator -avd seedtest -no-window -no-audio -gpu swiftshader_indirect -camera-back webcam0`; wait until `adb shell getprop sys.boot_completed` = 1. **Never move the webcam — ask the user first.** |
 | Camera | webcam0 attached by the user; QR feed = `http://192.168.2.102:8000/scan.html` (auto-refresh, serves `/tmp/e2e/`; `cd /tmp/e2e && python3 -m http.server 8000`) |
 | APK | debug APK with all audit fixes installed on `emulator-5554`, CAMERA granted; UI driven via `adb shell input tap` (1080×2400) + `uiautomator dump` |
-| On device | settings = Testnet (persisted in `files/settings.json`); no seeds loaded (the E2E seed `65fb43fe` was discarded at the end of the session) |
+| On device | settings = Testnet (persisted in `files/settings.json`); seeds are memory-only — the app is currently on the Select Signer screen after a binary-PSBT scan (no seed loaded in the last session; load via the mnemonic QR `cam_mnemonic.txt.png` → fingerprint `8d9cced8`) |
+| Camera sizing | feed QRs must stay ≤ ~740 px on the 1280×960 canvas (the webcam FoV crops beyond that); binary PSBT QR rendered at 657 px. If a decode "mysteriously" fails, screencap the emulator and run ZXing on the preview before blaming the app |
 | Env | `export JAVA_HOME=$HOME/toolchain/jdk-17.0.20.1+1 PATH=$JAVA_HOME/bin:$PATH` and `export PATH=$HOME/toolchain/android-sdk/platform-tools:$PATH` (adb) |
 
 ## Next (ordered)
 
-1. **Camera re-test — needs the user**: the monitor the webcam sees is not showing the QR feed (browser tab closed/covered/other screen). When the feed is visible again (`http://192.168.2.102:8000/scan.html`, auto-reloads; switch images with `/tmp/e2e/show.sh cam_psbt.bin`), re-scan the **regenerated** PSBT → Overview must show **Change: 4,998 sats**, 1 destination 0.5 BTC. Also still pending: `psbt.b64` and `psbt.b43` QR scans, and one Specter-split (`pNofM`) PSBT scan to exercise the new `ScanSpecterPsbtView`.
-2. A1 pending-seed branch on device (Tools → Calc 12th/24th word → 11 words → Discard).
-3. Commit the session's changes (BYTE_SEGMENTS decode fix, decodeQr extraction + tests, compact routing + specter/BBQR split-PSBT port, PSBT fixture regen, ChangeDetectionTest, SplitQrDecodersTest, docs).
-4. User pushes the commits (the first push also first-runs CI with the new `:app:test` step).
+1. Commit the session's changes (extractPayload mixed-segment fix + regression test, accumulation-view guards + SplitQrException, TRY_HARDER, docs).
+2. User pushes the commits (the first push also first-runs CI with the new `:app:test` step).
 
 ## Known deltas vs upstream (deliberate, documented)
 
@@ -46,8 +44,11 @@ branch, full re-check, commit.
 | PSBT sign → all 8 UR2 parts captured → repo `URDecoder` reassembles (232 B, `psbt\xff`) | ✅ |
 | **BIP143 signature, fully independent verification** (own preimage from official BIP vectors + pubkey verify) | ✅ app's partial sig VERIFIES — app signer is correct (the earlier "discrepancy" was the verification harness: BIP143 v0 uses plain dSHA256, not the BIP341 tagged hash; REASONING.md) |
 | **Change detection** | ✅ after fixture fix: Overview shows Change 4,998 sats — was a **fixture bug** (change output had no `bip32_derivations`; plus a malformed 23-byte destination script). Parser unchanged; regression test added (`ChangeDetectionTest`, core) |
-| psbt.b64 / psbt.b43 QR scan | pending (regenerated fixture, re-scan next) |
-| A1 pending-seed branch (calc-12th-word Discard) | code-reviewed; needs an 11-word typed entry on device — Next item 2 |
+| psbt.b64 / psbt.b43 QR scan | ✅ both decode → same Overview values (Spend 0.5 BTC, Change 4,998, Fee 2,000) |
+| **Specter split PSBT** (3 animated `pNofM` frames, `ScanSpecterPsbtView`) | ✅ reassembled on device → Select Signer → Overview correct. Surfaced the **mixed-segment truncation bug** (frame 3 = 107 B BYTE + 23 ALNUM; `byteSegments[0]` silently dropped the tail) → `extractPayload` fix + on-wire-matrix regression test |
+| **BBQr split PSBT** (4 `B$HP…` hex frames, `ScanBbqrPsbtView`) | ✅ reassembled on device → Overview correct |
+| Binary PSBT re-scan after the `extractPayload` change | ✅ (65-module QR at 657 px; the old 780 px render was cropped by the camera FoV — see restart table) |
+| A1 pending-seed branch (calc-12th-word Discard) | ✅ typed 11 words via scripted `adb input tap` → finalize-with-zeros → final word `about` (fp `73c5da0a`) → Discard → clean exit to Home with **zero loaded seeds** (the exact former crash/wrong-seed scenario) |
 
 ## Verification numbers (all re-run green after every change)
 
@@ -59,6 +60,14 @@ upstream-limitation set) · 48 mnemonic gen · 39 BIP-85 · 36 message sign ·
 [build_instructions.md](build_instructions.md).
 
 ## History (newest first)
+
+### Camera E2E completion pass (this session)
+
+- **All remaining scan paths verified through the real camera**: Specter split PSBT (3 frames), BBQr split PSBT (4 frames), b64/b43 PSBT, binary PSBT, A1 pending-seed Discard (scripted 11-word entry: dump → letter-key coords → one `adb input tap` burst per word, candidate tap at (540,484)).
+- **Mixed-segment QR truncation bug found + fixed** (the Specter cycle kept failing as "not valid base64"): `qrcode` 8.x splits one payload into BYTE+ALPHANUMERIC segments; the old code returned the first byte segment (107 of 130 bytes). `CameraScanner.extractPayload` now: ASCII → `result.text`, binary → all `BYTE_SEGMENTS` concatenated; `TRY_HARDER` hint added. Regression test embeds the exact 49×49 module matrix of the failing frame as hex.
+- **Accumulation-view NPE found + fixed**: the re-run loop forwards *any* decoded QR to the view's `onResult` — a mnemonic on the monitor mid-cycle crashed `ScanSpecterPsbtView` in `find()!!`. Both split views now ignore non-matching payloads; decoders throw the caught `SplitQrException` instead of NPE/IndexOutOfBounds.
+- **Stale-APK lesson**: emulator internal storage was full (27 MB of on-device debug dumps), so `adb install` failed silently and three "decode" mysteries were one old binary. Rule recorded in REASONING.md: md5-compare the pulled `base.apk` after installs; clean device artifacts.
+- **Camera FoV limit pinned**: 780 px QR cropped at right/bottom (screencap → ZXing on the preview showed the partial QR); fixtures now ≤ 740 px.
 
 ### Full re-check pass (this session)
 
@@ -131,3 +140,4 @@ Believed/actual/rule records for the reflection bugs live in REASONING.md.
 | Docs audit + verification suite + `CrosscheckPsbtParser` fix | `7fe6eed` |
 | Audit-fix pass (A1–A6, B1–B10, C1–C7) + kwargs `instantiateView` + `ViewInstantiationTest` | `eeaaa16` / `5e80cd3` |
 | Documentation review pass (D1–D7; dice/tips values recomputed) + `:app:test` in CI | `88f6bd6` |
+| Camera E2E completion: extractPayload mixed-segment fix + guards + TRY_HARDER + docs (this session) | _(this commit)_ |

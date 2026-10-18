@@ -214,16 +214,24 @@ class CameraScanner(
  * Pure Y-plane → QR payload decode, unit-testable on the JVM.
  *
  * Runs a 4-rotation sweep (VENDORED.md mitigation for the pinned ZXing
- * detector limitation). Returns the payload exactly as encoded in the QR:
- *  - byte mode: `BYTE_SEGMENTS` metadata — the raw payload bytes. The
- *    vendored reader exposes them there (result.text goes through charset
- *    detection and would corrupt binary payloads, result.rawBytes is the
- *    EC-processed codeword stream, NOT the payload);
- *  - text modes (numeric/alphanumeric): `result.text` (pure ASCII; in
- *    numeric mode rawBytes is the packed bit stream, not the payload).
+ * detector limitation). Returns the payload exactly as encoded in the QR.
+ *
+ * Payload extraction (see `extractPayload`): encoders do *optimal
+ * segmentation* — a text payload like a Specter frame may be split into
+ * BYTE + ALPHANUMERIC segments (the Python `qrcode` lib does this whenever
+ * a long 0-9A-Z run exists). In that case `BYTE_SEGMENTS` holds only the
+ * byte-mode parts and `result.text` is the only faithful reconstruction.
+ * Rule: pure-ASCII `text` → `text` (lossless for all text QR types);
+ * non-ASCII `text` → binary payload → concatenate `BYTE_SEGMENTS` (raw
+ * bytes; `text` was mangled by charset detection). `result.rawBytes` is
+ * the EC codeword stream, never the payload.
  */
 fun decodeQr(yPlane: ByteArray, width: Int, height: Int): ByteArray? {
     val reader = QRCodeReader()
+    // TRY_HARDER: real webcam frames are noisier/lower-contrast than clean
+    // screenshots; the extra detector effort (perspective + multi-binarization)
+    // is what makes live scanning reliable. See CameraScannerDecodeTest.
+    val hints = mapOf(com.google.zxing.DecodeHintType.TRY_HARDER to true)
     for (rotation in 0..3) {
         val (rot, w, h) = if (rotation == 0) {
             Triple(yPlane, width, height)
@@ -232,13 +240,8 @@ fun decodeQr(yPlane: ByteArray, width: Int, height: Int): ByteArray? {
         }
         val source = PlanarYUVLuminanceSource(rot, w, h, 0, 0, w, h, false)
         try {
-            val result = reader.decode(BinaryBitmap(GlobalHistogramBinarizer(source))) ?: continue
-            val segments = result.resultMetadata[com.google.zxing.ResultMetadataType.BYTE_SEGMENTS]
-            return if (segments is List<*> && segments.isNotEmpty()) {
-                (segments[0] as ByteArray).copyOf()
-            } else {
-                result.text.toByteArray(Charsets.ISO_8859_1)
-            }
+            val result = reader.decode(BinaryBitmap(GlobalHistogramBinarizer(source)), hints) ?: continue
+            return extractPayload(result)
         } catch (e: Exception) {
             // no QR at this orientation — try the next rotation
         } finally {
@@ -246,6 +249,37 @@ fun decodeQr(yPlane: ByteArray, width: Int, height: Int): ByteArray? {
         }
     }
     return null
+}
+
+/**
+ * Reconstruct the payload from a decoded QR (see [decodeQr] for the rule).
+ * Top-level so the mixed-segment case is unit-testable without a device.
+ */
+fun extractPayload(result: com.google.zxing.Result): ByteArray {
+    val text = result.text
+    // Text payloads (mnemonics, UR parts, base64/base43, Specter/BBQR
+    // frames, descriptors) are pure ASCII. `text` is the only
+    // reconstruction that preserves mixed BYTE+ALPHANUMERIC encodings, and
+    // for ASCII it is lossless.
+    if (text.isNotEmpty() && text.all { it.code in 0..127 }) {
+        return text.toByteArray(Charsets.ISO_8859_1)
+    }
+    // Non-ASCII text ⇒ binary payload (e.g. a byte-mode PSBT, which can
+    // only be carried as byte segment(s)). `text` went through charset
+    // guessing and is corrupt; use the raw segments in order.
+    val segments = result.resultMetadata[com.google.zxing.ResultMetadataType.BYTE_SEGMENTS]
+    if (segments is List<*> && segments.isNotEmpty()) {
+        val parts = segments.filterIsInstance<ByteArray>()
+        val out = ByteArray(parts.sumOf { it.size })
+        var off = 0
+        for (p in parts) {
+            System.arraycopy(p, 0, out, off, p.size)
+            off += p.size
+        }
+        return out
+    }
+    // No byte segments and non-ASCII text (defensive fallback).
+    return text.toByteArray(Charsets.ISO_8859_1)
 }
 
 /**

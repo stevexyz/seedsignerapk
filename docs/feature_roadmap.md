@@ -10,7 +10,7 @@ Binding requirements: [spec.md](spec.md). First real milestone: end-to-end flow 
 * `qr`: decoder from camera frames — **vendored ZXing** (Apache-2.0), attribution in `VENDORED.md`
 * Every routine tested against the repo test vectors ([dice_verification.md](dice_verification.md)) and differential-tested against `seedsigner_orig`
 
-## v0.1 — Core signing flow (testnet) ✅ (code complete; device E2E partially verified on emulator — see current-task.md)
+## v0.1 — Core signing flow (testnet) ✅ (code complete; every scan path E2E-verified through the emulator camera pipeline — see current-task.md)
 
 * ✅ `app` shell: one Activity, classic framework Views, manifest with camera permission only
 * ✅ Stateless in-memory seed holder

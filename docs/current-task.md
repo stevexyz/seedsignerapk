@@ -1,10 +1,12 @@
 # Current Task
 
 **Status: done.** Every scan path is E2E-verified through the real camera
-pipeline (table below), the final re-check is complete, and all bugs the
-pass surfaced are fixed + regression-tested (mixed-segment QR truncation,
-accumulation-view NPE, stale-APK/disk-full install). Committed
-(`3c40e37`); remaining: user pushes.
+pipeline (table below), and four review passes (audit, E2E completion, doc
+re-reads) plus a full source+docs parity sweep are complete; every bug they
+surfaced is fixed + regression-tested (mixed-segment QR truncation,
+accumulation-view NPE, stale-APK/disk-full install, Home temp-state wipe,
+camera-callback staleness, crosscheck-tool `--help`). Committed;
+remaining: user pushes.
 
 ## Restart here
 
@@ -53,13 +55,17 @@ accumulation-view NPE, stale-APK/disk-full install). Committed
 
 209 BIP39 · 8 PSBT · 34 PSBT parser · 10 urtypes · 277/284 QR (7 pinned
 upstream-limitation set) · 48 mnemonic gen · 39 BIP-85 · 36 message sign ·
-96 descriptor · 83 address verification · 47 `:core:test` (incl.
+96 descriptor · 83 address verification · 46 `:core:test` (incl.
 `ChangeDetectionTest`, `SplitQrDecodersTest`) · 17 `:app:test` per variant
 (both variants; incl. `CameraScannerDecodeTest`, `CameraScannerRotateTest`).
 Exact commands:
 [build_instructions.md](build_instructions.md).
 
 ## History (newest first)
+
+### Source + docs audit pass 4 (this session)
+
+Every view + core file read end-to-end against `seedsigner_orig/`. Fixes: F1 Home reached via back-stack no longer skips the temp-state wipe (`Controller.wipHomeState()`); F2 async camera callbacks staleness-guarded (`Controller.currentView` readable + `currentView === this` checks); F3 `SplitQrDecoders` hardened (`segGroup()` throws instead of NPE, `add()` rejects non-segments, `rawInflate` loops); F4 dead code + stale comments removed (SettingsViews, SeedBackupViews, PsbtParser); F5 `SkeletonTest.kt` placeholder removed (`:core:test` → 46); F6 **all 11 crosscheck tools now answer `--help` properly** (9 were broken: 2 crashed, 7 silently ran) — argparse everywhere, guarded imports, `gradle_env()` JAVA_HOME fallback, no hardcoded `~/00MASTER` path. All 11 tools re-run green in a clean env (bip39 209, bip85 39, descriptor 96, address 83, msg 36, mnemonic 48, psbt 8, parser 34, ur2 8, urtypes 10) + 46 core / 17 app green. Full table in REASONING.md.
 
 ### Documentation review pass 3 (this session)
 

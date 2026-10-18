@@ -21,15 +21,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "seedsigner_orig" / "src"))
 
-from seedsigner.helpers.ur2.ur import UR
-from seedsigner.helpers.ur2.ur_encoder import UREncoder
-
 IN = Path("/tmp/ur2_in.tsv")
 OUT = Path("/tmp/ur2_out.tsv")
 
 
 def build():
     import hashlib
+    # Deferred: --help must work without the upstream checkout importable.
+    from seedsigner.helpers.ur2.ur import UR
+    from seedsigner.helpers.ur2.ur_encoder import UREncoder
     # Deterministic payloads of increasing size: single-part, ~2, ~5, ~11, ~21
     # fragments at max_fragment_len=1500.
     def make_payload(size):
@@ -66,10 +66,24 @@ def check():
     print(f"ALL {len(in_lines)} CASES BYTE-IDENTICAL (decode + re-encode)")
 
 
-if __name__ == "__main__":
-    if "--build" in sys.argv:
+def main():
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Differential crosscheck for the Kotlin UR2 port "
+                    "(com.seedsigner.core.qr.ur2). --build writes the case file "
+                    "from the upstream Python encoder; --check compares it "
+                    "against the Kotlin output byte-for-byte.")
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("--build", action="store_true", help="write the case TSV (needs the upstream checkout)")
+    g.add_argument("--check", action="store_true", help="compare the Kotlin side's output against the case TSV")
+    args = ap.parse_args()
+    if args.build:
         build()
-    elif "--check" in sys.argv:
+    elif args.check:
         check()
     else:
-        print(__doc__)
+        ap.print_help()
+
+
+if __name__ == "__main__":
+    main()

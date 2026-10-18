@@ -12,6 +12,7 @@ Usage (from repo root):
 Exit code 0 = byte-identical on every case.
 """
 import hashlib
+import glob
 import os
 import random
 import subprocess
@@ -70,9 +71,27 @@ def py_expected(op, arg):
     raise ValueError(op)
 
 
+def gradle_env():
+    env = os.environ.copy()
+    if not env.get("JAVA_HOME"):
+        for jdk in sorted(glob.glob(os.path.expanduser("~/toolchain/jdk-17*"))):
+            env["JAVA_HOME"] = jdk
+            env["PATH"] = jdk + "/bin:" + env.get("PATH", "")
+            break
+    return env
+
+
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Differential cross-check: Kotlin core BIP39/mnemonic crypto "
+                    "vs upstream Python (embit). Emits random + fixed cases, "
+                    "runs the Kotlin side via Gradle, compares byte-for-byte.")
+    ap.add_argument("n_random", nargs="?", type=int, default=200,
+                    help="number of random cases in addition to the fixed vectors (default: 200)")
+    args = ap.parse_args()
+    n_random = args.n_random
     rng = random.Random(1337)  # deterministic case generation
-    n_random = int(sys.argv[1]) if len(sys.argv) > 1 else 200
     cases = list(FIXED)
 
     for _ in range(n_random):
@@ -104,7 +123,7 @@ def main():
     subprocess.run(
         ["./gradlew", ":core:crosscheck", "--no-daemon", "-q",
          "--args", f"{in_path} {out_path}"],
-        cwd=REPO_ROOT, check=True,
+        cwd=REPO_ROOT, check=True, env=gradle_env(),
     )
 
     kotlin_results = open(out_path).read().splitlines()

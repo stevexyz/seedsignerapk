@@ -25,25 +25,23 @@ sys.path.insert(0, os.path.join(ROOT, "seedsigner_orig", "tests"))
 from binascii import a2b_base64
 
 from embit.psbt import PSBT
-from psbt_testing_util import (
-    PSBTTestData,
-    claim_seed_owns_key,
-    create_output,
-    foreign_public_key,
-    p2tr_with_script_tree,
-    tapleaf_hash,
-)
-from seedsigner.models.psbt_parser import PSBTParser
-from seedsigner.models.settings_definition import SettingsConstants
+# Deferred-importable: --help must work without the upstream checkout.
+try:
+    from psbt_testing_util import (
+        PSBTTestData,
+        claim_seed_owns_key,
+        create_output,
+        foreign_public_key,
+        p2tr_with_script_tree,
+        tapleaf_hash,
+    )
+    from seedsigner.models.psbt_parser import PSBTParser
+    from seedsigner.models.settings_definition import SettingsConstants
+except ImportError as e:
+    PSBTTestData = None
+    _IMPORT_ERROR = e
 
 OUT = os.path.join(ROOT, "tools", "out", "psbt_parser_cases.tsv")
-
-SEEDS = {
-    "seed": PSBTTestData.seed.mnemonic_str,
-    "two_input_seed": PSBTTestData.two_input_seed.mnemonic_str,
-    "recipient_seed": PSBTTestData.recipient_seed.mnemonic_str,
-}
-
 
 def parse_case(psbt, seed_mnemonic):
     """Run the upstream parser and flatten the result into a dict of strings."""
@@ -89,6 +87,20 @@ def fresh(base_b64):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Crosscheck: upstream PSBTParser (Python/embit) vs Kotlin "
+                    "PsbtParser. Builds a battery of psbts from the upstream test "
+                    "fixtures, runs each through both sides, and compares the "
+                    "parsed output (or exception class) field by field.")
+    ap.parse_args()
+    if PSBTTestData is None:
+        sys.exit(f"dev dependency missing (upstream checkout): {_IMPORT_ERROR}")
+    SEEDS = {
+        "seed": PSBTTestData.seed.mnemonic_str,
+        "two_input_seed": PSBTTestData.two_input_seed.mnemonic_str,
+        "recipient_seed": PSBTTestData.recipient_seed.mnemonic_str,
+    }
     random.seed(42)
     cases = []  # (name, psbt, seed_name)
 

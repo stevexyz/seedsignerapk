@@ -80,6 +80,9 @@ class ToolsImageEntropyLivePreviewView : View() {
         if (activity.checkSelfPermission(android.Manifest.permission.CAMERA) !=
             android.content.pm.PackageManager.PERMISSION_GRANTED) {
             controller.requestCameraPermission { granted ->
+                // The dialog can outlive this screen; a stale result must
+                // not route into the new current view (see ScanView).
+                if (controller.currentView !== this) return@requestCameraPermission
                 if (granted) run(activity) else controller.onScreenResult(Ui.RET_CODE_BACK)
             }
             return null

@@ -34,13 +34,9 @@ class SettingsMenuView : View() {
         }
         screen.addButtons(labels + extraButtons)
         controller.showScreen(screen)
-
-        // remember which row was tapped for onResult
-        tapped = screen // not needed; index math is stable
         return null
     }
 
-    private var tapped: Ui.Screen? = null
     private val entryCount get() =
         controller.settings.entries.count { it.visibility == visibility }
 
@@ -152,26 +148,18 @@ class VersionView : View() {
  */
 class SettingsIngestSettingsQRView : View() {
 
-    private var data: String = ""
-    private var configName: String? = null
-    private var updatedCount: Int = 0
-    private var statusMessage: String = ""
-
     override fun run(activity: Activity): Destination? {
-        data = viewArgs["data"] as? String ?: ""
+        val data = viewArgs["data"] as? String ?: ""
         // May raise, which bubbles up to the Controller's error screen,
         // exactly like upstream.
-        val (name, updates) = com.seedsigner.app.models.SettingsQr.parse(data)
-        configName = name
-        updatedCount = updates.size
+        val (configName, updates) = com.seedsigner.app.models.SettingsQr.parse(data)
         updates.forEach { (k, v) -> controller.settings.setValue(k, v) }
         controller.settings.save(activity)
-        statusMessage = "Settings saved"
 
         val screen = Ui.screen(activity, "Settings QR", showBack = false)
         configName?.let { screen.addText(it, 18f) }
-        screen.addText("$updatedCount setting(s) applied", 16f)
-        screen.addText(statusMessage, 14f, 0xFF9E9E9E.toInt())
+        screen.addText("${updates.size} setting(s) applied", 16f)
+        screen.addText("Settings saved", 14f, 0xFF9E9E9E.toInt())
         screen.addButtons(listOf("Done"))
         controller.showScreen(screen)
         return null

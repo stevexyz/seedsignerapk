@@ -26,13 +26,22 @@ class SpecterPsbtDecoder {
     fun isSpecterPsbtSegment(s: String): Boolean =
         Regex("^p(\\d+)of(\\d+) [A-Za-z0-9+/=]+$", RegexOption.IGNORE_CASE).matches(s)
 
-    fun currentSegmentNum(segment: String): Int =
-        Regex("^p(\\d+)of(\\d+) ", RegexOption.IGNORE_CASE).find(segment)!!.groupValues[1].toInt()
+    fun currentSegmentNum(segment: String): Int = segGroup(segment, 1)
 
-    fun totalSegmentNums(segment: String): Int =
-        Regex("^p(\\d+)of(\\d+) ", RegexOption.IGNORE_CASE).find(segment)!!.groupValues[2].toInt()
+    fun totalSegmentNums(segment: String): Int = segGroup(segment, 2)
+
+    private fun segGroup(segment: String, group: Int): Int {
+        // Callers guard with isSpecterPsbtSegment; the exception (not NPE)
+        // keeps a stray call out of the crash handler.
+        return Regex("^p(\\d+)of(\\d+) ", RegexOption.IGNORE_CASE).find(segment)
+            ?.groupValues?.get(group)
+            ?.toInt()
+            ?: throw SplitQrException("Not a Specter PSBT segment.")
+    }
 
     fun add(segment: String): SegmentStatus {
+        // Defensive: callers guard with isSpecterPsbtSegment (see BbqrDecoder).
+        if (!isSpecterPsbtSegment(segment)) throw SplitQrException("Not a Specter PSBT segment.")
         val total = totalSegmentNums(segment)
         totalSegments?.let { if (it != total) throw SplitQrException("Segment total changed unexpectedly") }
         totalSegments = total
@@ -162,8 +171,14 @@ internal fun base32Decode(s: String): ByteArray {
 internal fun ByteArray.rawInflate(): ByteArray {
     val inflater = Inflater(true)
     inflater.setInput(this)
-    val out = ByteArray(this.size.coerceAtLeast(64) * 2)
-    val n = inflater.inflate(out)
+    val buf = ByteArray(this.size.coerceAtLeast(64) * 2)
+    val out = java.io.ByteArrayOutputStream()
+    // Loop: the expansion ratio of a compressed PSBT can exceed the buffer's 2x.
+    while (!inflater.finished()) {
+        val n = inflater.inflate(buf)
+        if (n == 0 && inflater.needsInput()) break
+        out.write(buf, 0, n)
+    }
     inflater.end()
-    return out.copyOf(n)
+    return out.toByteArray()
 }

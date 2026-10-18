@@ -11,6 +11,7 @@ Usage (from repo root):
 
 Exit code 0 = byte-identical on every case (parse, re-serialize, sign).
 """
+import glob
 import os
 import random
 import subprocess
@@ -194,6 +195,11 @@ def case_v2(name: str):
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Differential cross-check: Kotlin core PSBT module vs upstream "
+                    "embit 0.8.0 (parse + re-serialize + sign, byte-identical).")
+    ap.parse_args()
     cases = [
         case_p2wpkh("p2wpkh"),
         case_p2pkh("p2pkh"),
@@ -213,10 +219,10 @@ def main():
 
     env = os.environ.copy()
     if not env.get("JAVA_HOME"):
-        default_jdk = os.path.expanduser("~/toolchain/jdk-17.0.20.1+1")
-        if os.path.isdir(default_jdk):
-            env["JAVA_HOME"] = default_jdk
-            env["PATH"] = default_jdk + "/bin:" + env.get("PATH", "")
+        for jdk in sorted(glob.glob(os.path.expanduser("~/toolchain/jdk-17*"))):
+            env["JAVA_HOME"] = jdk
+            env["PATH"] = jdk + "/bin:" + env.get("PATH", "")
+            break
 
     subprocess.run(
         ["./gradlew", ":core:crosscheck-psbt", "--no-daemon", "-q",

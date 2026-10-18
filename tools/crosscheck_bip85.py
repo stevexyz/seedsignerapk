@@ -12,6 +12,7 @@ TSV columns: name \t root_kind \t root \t num_words \t index \t result
 """
 
 import base64
+import glob
 import os
 import random
 import subprocess
@@ -38,7 +39,22 @@ SPEC_ENTROPY = {
 }
 
 
+def gradle_env():
+    env = os.environ.copy()
+    if not env.get("JAVA_HOME"):
+        for jdk in sorted(glob.glob(os.path.expanduser("~/toolchain/jdk-17*"))):
+            env["JAVA_HOME"] = jdk
+            env["PATH"] = jdk + "/bin:" + env.get("PATH", "")
+            break
+    return env
+
+
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Differential crosscheck for Bip85.kt (BIP-85 app 39 child "
+                    "mnemonics) vs embit.bip85.")
+    ap.parse_args()
     rng = random.Random(85)
     rows = []
 
@@ -82,7 +98,7 @@ def main():
     subprocess.run(
         ["./gradlew", ":core:crosscheck-bip85", "--no-daemon", "-q",
          "--args", f"{os.path.normpath(OUT)} {os.path.normpath(OUT)}.results"],
-        cwd=REPO_ROOT, check=True,
+        cwd=REPO_ROOT, check=True, env=gradle_env(),
     )
 
     with open(OUT + ".results") as f:

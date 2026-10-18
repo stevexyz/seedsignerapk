@@ -75,7 +75,11 @@ class Controller private constructor() {
     val backStack: MutableList<Destination> = mutableListOf()
 
     private var activity: Activity? = null
-    private var currentView: View? = null
+    // Public read so a View's async callbacks (camera decode, permission
+    // grant) can detect that the user already left that screen and drop a
+    // stale result instead of routing it into the new current view.
+    var currentView: View? = null
+        private set
     private var currentScreen: Ui.Screen? = null
     private var flowFinished = false
 
@@ -108,21 +112,11 @@ class Controller private constructor() {
         var dest = next
         if (dest.ViewCls == null) dest = Destination(MainMenuView::class.java)
 
-        if (dest.ViewCls == MainMenuView::class.java) {
-            // Home always wipes the back stack and temp flow state
-            clearBackStack()
-            resumeMainFlow = null
-            psbt = null
-            psbtSeed = null
-            psbtParser = null
-            multisigWalletDescriptor = null
-            imageEntropyPreviewFrames = null
-            imageEntropyFinalImage = null
-            signMessageData = null
-            unverifiedAddress = null
-            addressVerifySeed = null
-            addressExplorerData = null
-        }
+        // Home always wipes the back stack and temp flow state (upstream does
+        // this at the top of the loop, i.e. right before Home runs — so it
+        // applies to a Home reached via back-stack resolution too; see the
+        // call in the BackStackView branch below).
+        if (dest.ViewCls == MainMenuView::class.java) wipHomeState()
 
         Log.i("Controller", "back_stack: ${backStack.map { it.ViewCls?.simpleName }}")
 
@@ -135,6 +129,9 @@ class Controller private constructor() {
         if (dest.ViewCls == BackStackView::class.java) {
             dest = popPrevFromBackStack()
             if (dest.ViewCls == null) dest = Destination(MainMenuView::class.java)
+            // Upstream re-runs the loop top before executing the resolved
+            // View: a Home reached this way must wipe the temp flow state too.
+            if (dest.ViewCls == MainMenuView::class.java) wipHomeState()
             if (clearHistory) clearBackStack()
             if (backStack.isEmpty() || backStack.last() != dest) backStack.add(dest)
             runView(act, dest)
@@ -228,6 +225,21 @@ class Controller private constructor() {
 
     fun clearBackStack() {
         backStack.clear()
+    }
+
+    private fun wipHomeState() {
+        clearBackStack()
+        resumeMainFlow = null
+        psbt = null
+        psbtSeed = null
+        psbtParser = null
+        multisigWalletDescriptor = null
+        imageEntropyPreviewFrames = null
+        imageEntropyFinalImage = null
+        signMessageData = null
+        unverifiedAddress = null
+        addressVerifySeed = null
+        addressExplorerData = null
     }
 
     /** Upstream pop_prev_from_back_stack: pop current, then the real "back". */

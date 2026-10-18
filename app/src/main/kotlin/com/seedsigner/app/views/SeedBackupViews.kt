@@ -226,8 +226,7 @@ class SeedTranscribeSeedQRWholeQRView : View() {
     override fun onResult(index: Int): Destination {
         if (index == Ui.RET_CODE_BACK) return Destination(BackStackView::class.java)
         return Destination(SeedTranscribeSeedQRZoomedInView::class.java,
-            viewArgs = mapOf("seedIndex" to seedIndex, "seedqrFormat" to seedqrFormat,
-                "initialZoneX" to 0, "initialZoneY" to 0))
+            viewArgs = mapOf("seedIndex" to seedIndex, "seedqrFormat" to seedqrFormat))
     }
 }
 
@@ -466,11 +465,9 @@ internal object SeedQrDecoderKt {
      * for 12 words, 256 bits (32 bytes) for 24 words — i.e. exactly the
      * BIP-39 entropy, so the checksum word is recomputed on the way back
      * (upstream: bip39.mnemonic_from_bytes). Returns null when the payload
-     * is not a compact SeedQR.
-     * Caveat: the scanned bytes went through ZXing's charset guess -> String
-     * round-trip (byte mode is not exposed by the vendored reader), so a
-     * corrupted read yields a wrong/invalid mnemonic — a safe failure, the
-     * confirm step compares against the known seed.
+     * is not a compact SeedQR. A corrupted read yields a wrong/invalid
+     * mnemonic — a safe failure, the confirm step compares against the
+     * known seed.
      */
     fun decodeCompactSeedQr(bytes: ByteArray): List<String>? {
         if (bytes.size != 16 && bytes.size != 32) return null

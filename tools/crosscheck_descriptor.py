@@ -32,8 +32,12 @@ from embit.networks import NETWORKS
 from embit.descriptor import Descriptor
 from embit import script as embit_script
 
-from seedsigner.helpers import embit_utils
-get_multisig_policy = embit_utils.get_multisig_policy
+# Deferred-importable: --help must work without the upstream checkout.
+try:
+    from seedsigner.helpers import embit_utils
+except ImportError as e:
+    embit_utils = None
+    _IMPORT_ERROR = e
 
 OUT = os.path.join(os.path.dirname(__file__), "out", "descriptor_cases.tsv")
 
@@ -73,6 +77,15 @@ REJECTS = [
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Multisig wallet descriptor crosscheck generator (dev-only). "
+                    "Exercises the embit descriptor package and emits the cases "
+                    "the Kotlin port (core/descriptor/Descriptor.kt) must reproduce.")
+    ap.parse_args()
+    if embit_utils is None:
+        sys.exit(f"dev dependency missing (upstream checkout): {_IMPORT_ERROR}")
+    get_multisig_policy = embit_utils.get_multisig_policy
     rows = []
     for name, desc_str in DESCRIPTORS.items():
         desc = Descriptor.from_string(desc_str)

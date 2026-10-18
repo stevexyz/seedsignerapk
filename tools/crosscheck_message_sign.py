@@ -9,6 +9,7 @@ TSV columns: name \t seed_b64 \t derivation \t msg_b64 \t network \t signature
 """
 
 import base64
+import glob
 import os
 import random
 import subprocess
@@ -17,13 +18,35 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "seedsigner_orig", "src"))
 
 from embit import bip39
-from seedsigner.helpers import embit_utils
+# Deferred-importable: --help must work without the upstream checkout.
+try:
+    from seedsigner.helpers import embit_utils
+except ImportError as e:
+    embit_utils = None
+    _IMPORT_ERROR = e
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
 OUT = os.path.join(REPO_ROOT, "tools", "out", "message_sign_cases.tsv")
 
 
+def gradle_env():
+    env = os.environ.copy()
+    if not env.get("JAVA_HOME"):
+        for jdk in sorted(glob.glob(os.path.expanduser("~/toolchain/jdk-17*"))):
+            env["JAVA_HOME"] = jdk
+            env["PATH"] = jdk + "/bin:" + env.get("PATH", "")
+            break
+    return env
+
+
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Differential crosscheck for MessageSigner.kt (Bitcoin signed "
+                    "messages) vs the upstream seedsigner embit_utils.sign_message.")
+    ap.parse_args()
+    if embit_utils is None:
+        sys.exit(f"dev dependency missing (upstream checkout): {_IMPORT_ERROR}")
     rng = random.Random(6979)
     rows = []
 
@@ -90,7 +113,7 @@ def main():
     subprocess.run(
         ["./gradlew", ":core:crosscheck-message-sign", "--no-daemon", "-q",
          "--args", f"{os.path.normpath(OUT)} {os.path.normpath(OUT)}.results"],
-        cwd=REPO_ROOT, check=True,
+        cwd=REPO_ROOT, check=True, env=gradle_env(),
     )
 
     with open(OUT + ".results") as f:

@@ -386,7 +386,7 @@ class PsbtParser(
      */
     fun verifyMultisigOutput(descriptor: com.seedsigner.core.descriptor.Descriptor, changeNum: Int): Boolean {
         val i = getChangeData(changeNum)!!.outputIndex
-        val output = psbt!!.outputs[i]
+        val output = psbt.outputs[i]
         return descriptor.owns(output.scriptPubkey?.data, output.bip32Derivations)
     }
 
@@ -632,13 +632,6 @@ class PsbtParser(
         }
         throw PsbtSeedCannotSignError()
     }
-
-    /**
-     * Upstream `verify_multisig_output` checks a change output against a
-     * user-supplied "known good" embit Descriptor. The Descriptor port is a
-     * separate chunk; until then the APK offers no multisig change verification
-     * (documented in docs/feature_roadmap.md).
-     */
 
     private fun fillMissingFingerprints(cache: DerivationCache) {
         if (root == null) return

@@ -14,6 +14,7 @@ TSV columns: name \t input_b64 \t is_bytes \t result
 """
 
 import base64
+import glob
 import os
 import random
 import subprocess
@@ -21,7 +22,12 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "seedsigner_orig", "src"))
 
-from seedsigner.helpers import mnemonic_generation as mg
+# Deferred-importable: --help must work without the upstream checkout.
+try:
+    from seedsigner.helpers import mnemonic_generation as mg
+except ImportError as e:
+    mg = None
+    _IMPORT_ERROR = e
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
 OUT = os.path.join(REPO_ROOT, "tools", "out", "mnemonic_gen_cases.tsv")
@@ -35,7 +41,25 @@ def flips_string(n, rng):
     return "".join(rng.choice("01") for _ in range(n))
 
 
+def gradle_env():
+    env = os.environ.copy()
+    if not env.get("JAVA_HOME"):
+        for jdk in sorted(glob.glob(os.path.expanduser("~/toolchain/jdk-17*"))):
+            env["JAVA_HOME"] = jdk
+            env["PATH"] = jdk + "/bin:" + env.get("PATH", "")
+            break
+    return env
+
+
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Differential crosscheck generator for MnemonicGeneration.kt "
+                    "(dice / coin flips / raw bytes -> BIP39 mnemonics) vs the "
+                    "upstream seedsigner helpers/mnemonic_generation.py.")
+    ap.parse_args()
+    if mg is None:
+        sys.exit(f"dev dependency missing (upstream checkout): {_IMPORT_ERROR}")
     rng = random.Random(20260210)
     rows = []
 
@@ -114,7 +138,7 @@ def main():
     subprocess.run(
         ["./gradlew", ":core:crosscheck-mnemonic-gen", "--no-daemon", "-q",
          "--args", f"{os.path.normpath(OUT)} {os.path.normpath(OUT)}.results"],
-        cwd=REPO_ROOT, check=True,
+        cwd=REPO_ROOT, check=True, env=gradle_env(),
     )
 
     with open(OUT + ".results") as f:

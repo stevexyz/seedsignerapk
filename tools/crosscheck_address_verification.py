@@ -13,24 +13,28 @@ import os
 import sys
 import types
 
-sys.path.insert(0, os.path.expanduser("~/00MASTER/seedsignerapk/seedsigner_orig/src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "seedsigner_orig", "src"))
 # urtypes at the commit pinned by docs/REASONING (UR types source).
 sys.path.insert(0, os.path.expanduser("/tmp/urtypes-7fb280eab3b3563dfc57d2733b0bf5cbc0a96a6a/src"))
-
-# decode_qr.py imports pyzbar (native libzbar) at module level; the class we
-# test never calls it. Stub it so the import succeeds without native deps.
-_stub = types.ModuleType("pyzbar")
-_substub = types.ModuleType("pyzbar.pyzbar")
-_substub.ZBarSymbol = type("ZBarSymbol", (), {"QRCODE": 4})
-_stub.pyzbar = types.SimpleNamespace(decode=lambda *a, **k: [])
-sys.modules["pyzbar"] = _stub
-sys.modules["pyzbar.pyzbar"] = _substub
 
 from embit import bip32, bip39
 from embit.networks import NETWORKS
 
-from seedsigner.helpers import embit_utils
-from seedsigner.models.decode_qr import BitcoinAddressQrDecoder
+# Deferred-importable: --help must work without the upstream checkout +
+# urtypes checkout. decode_qr.py imports pyzbar (native libzbar) at module
+# level; the class we test never calls it, so stub it out.
+try:
+    _stub = types.ModuleType("pyzbar")
+    _substub = types.ModuleType("pyzbar.pyzbar")
+    _substub.ZBarSymbol = type("ZBarSymbol", (), {"QRCODE": 4})
+    _stub.pyzbar = types.SimpleNamespace(decode=lambda *a, **k: [])
+    sys.modules["pyzbar"] = _stub
+    sys.modules["pyzbar.pyzbar"] = _substub
+    from seedsigner.helpers import embit_utils
+    from seedsigner.models.decode_qr import BitcoinAddressQrDecoder
+except ImportError as e:
+    embit_utils = None
+    _IMPORT_ERROR = e
 
 OUT = os.path.join(os.path.dirname(__file__), "out", "address_verification_cases.tsv")
 
@@ -44,6 +48,15 @@ SEED_PHRASES = [
 
 
 def main():
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Address verification crosscheck generator (dev-only). Builds "
+                    "the cases for the single-sig address brute-force primitives "
+                    "(derivation paths, receive/change addresses, QR address "
+                    "recognition) that the Kotlin Address port must match.")
+    ap.parse_args()
+    if embit_utils is None:
+        sys.exit(f"dev dependency missing (upstream + urtypes checkouts): {_IMPORT_ERROR}")
     rows = []
 
     # --- address derivation per script type / network / index -------------

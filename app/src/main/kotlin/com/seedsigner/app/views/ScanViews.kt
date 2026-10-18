@@ -32,6 +32,9 @@ open class ScanView : View() {
     override fun run(activity: Activity): Destination? {
         if (activity.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             controller.requestCameraPermission { granted ->
+                // The dialog can outlive this screen (user backed out); a
+                // stale grant/deny must not route into the new current view.
+                if (controller.currentView !== this) return@requestCameraPermission
                 if (granted) run(activity) else controller.onScreenResult(Ui.RET_CODE_BACK)
             }
             return null
@@ -92,7 +95,10 @@ open class ScanView : View() {
         if (ur != null) {
             decodedUr = ur
             stopScanner()
-            activity.runOnUiThread { controller.onScreenResult(0) }
+            // The decode may complete after the user already left this
+            // screen (Cancel during an in-flight frame); route only if this
+            // view is still the current one.
+            activity.runOnUiThread { if (controller.currentView === this) controller.onScreenResult(0) }
         }
     }
 

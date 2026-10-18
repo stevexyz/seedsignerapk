@@ -3,8 +3,8 @@
 **Status: done.** Every scan path is E2E-verified through the real camera
 pipeline (table below), the final re-check is complete, and all bugs the
 pass surfaced are fixed + regression-tested (mixed-segment QR truncation,
-accumulation-view NPE, stale-APK/disk-full install). Remaining: commit,
-then user pushes.
+accumulation-view NPE, stale-APK/disk-full install). Committed
+(`3c40e37`); remaining: user pushes.
 
 ## Restart here
 
@@ -19,8 +19,7 @@ then user pushes.
 
 ## Next (ordered)
 
-1. Commit the session's changes (extractPayload mixed-segment fix + regression test, accumulation-view guards + SplitQrException, TRY_HARDER, docs).
-2. User pushes the commits (the first push also first-runs CI with the new `:app:test` step).
+1. User pushes the commits (the first push also first-runs CI with the new `:app:test` step).
 
 ## Known deltas vs upstream (deliberate, documented)
 
@@ -54,12 +53,17 @@ then user pushes.
 
 209 BIP39 · 8 PSBT · 34 PSBT parser · 10 urtypes · 277/284 QR (7 pinned
 upstream-limitation set) · 48 mnemonic gen · 39 BIP-85 · 36 message sign ·
-96 descriptor · 83 address verification · 40 `:core:test` (incl.
-`ChangeDetectionTest`) · 16 `:app:test` per variant (both variants; incl.
-`CameraScannerDecodeTest`, `CameraScannerRotateTest`). Exact commands:
+96 descriptor · 83 address verification · 47 `:core:test` (incl.
+`ChangeDetectionTest`, `SplitQrDecodersTest`) · 17 `:app:test` per variant
+(both variants; incl. `CameraScannerDecodeTest`, `CameraScannerRotateTest`).
+Exact commands:
 [build_instructions.md](build_instructions.md).
 
 ## History (newest first)
+
+### Documentation review pass 3 (this session)
+
+Full re-read of every doc against code + `seedsigner_orig/`. Four fixes: E1 `VENDORED.md` EC-level claim was wrong (upstream pins L, `helpers/qr.py` — app already matched; sentence rewritten), E2 display QR quiet zone 1 → 3 modules (upstream `border=3`), E3 this file's stale numbers/status (47 core / 17 app; `3c40e37`), E4 `code_structure.md` `qr/zxing` phrase. Full finding table in REASONING.md.
 
 ### Camera E2E completion pass (this session)
 
@@ -140,4 +144,4 @@ Believed/actual/rule records for the reflection bugs live in REASONING.md.
 | Docs audit + verification suite + `CrosscheckPsbtParser` fix | `7fe6eed` |
 | Audit-fix pass (A1–A6, B1–B10, C1–C7) + kwargs `instantiateView` + `ViewInstantiationTest` | `eeaaa16` / `5e80cd3` |
 | Documentation review pass (D1–D7; dice/tips values recomputed) + `:app:test` in CI | `88f6bd6` |
-| Camera E2E completion: extractPayload mixed-segment fix + guards + TRY_HARDER + docs (this session) | _(this commit)_ |
+| Camera E2E completion: extractPayload mixed-segment fix + guards + TRY_HARDER + docs | `3c40e37` |

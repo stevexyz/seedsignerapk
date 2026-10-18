@@ -28,8 +28,11 @@ repository, pinned to a specific release.
 ### Known upstream limitations (verified against pristine 3.5.4)
 
 1. **Default EC level is L**, and the encoder/decoder pair has a checksum
-   edge case at L for some contents (M/Q/H unaffected). Tests pin EC M,
-   matching the Python `qrcode` library's default (what upstream renders).
+   edge case at L for some contents (M/Q/H unaffected). The app's display
+   encoder keeps the default L — that is what upstream renders
+   (`seedsigner_orig/src/seedsigner/helpers/qr.py` pins `ERROR_CORRECT_L`,
+   its fallback `qrencode -l L` likewise); `ZxingDecodeTest` encodes at EC M
+   to stay clear of the L edge case.
 2. **Content-dependent finder detection weakness**: for some QR contents a
    data run near a corner mimics the 1:1:3:1:1 finder ratio; the detector
    locks onto it, mis-estimates the version (e.g. samples 33 modules on a

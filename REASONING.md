@@ -147,3 +147,16 @@ Every QR input path was exercised through the real camera pipeline (webcam → e
 | `adb install -r` reported enough — the new APK was on the device | Internal storage was FULL (27 MB of debug frames I had left in the app's files dir), so the install failed with "not enough space" and the OLD APK kept running — three "mystery" failures were one stale binary | After any install in this environment, `adb pull` the installed `base.apk` and md5-compare against the build output; delete debug artifacts from the device when done. |
 | The base scanner's routing guarantees an accumulation view only ever sees its own frame type | The re-run loop (`fresh=false`) decodes whatever QR is in front of the camera — a mnemonic shown on the monitor mid-cycle crashed the Specter view with NPE in `find()!!` | Every scanner-accumulation view guards the payload type before touching its decoder; decoders throw the view-caught exception type, never NPE/IndexOutOfBounds. |
 | A 780 px QR fits the 1280×960 camera feed (smaller than the previously "too big" 931 px) | The webcam's field of view is narrower than the full canvas: the 780 px QR was cropped at right/bottom (screencap → ZXing showed a partial QR; ZXing failed on the preview itself) | Keep feed QRs ≤ ~740 px; when in doubt, screencap the emulator and run ZXing on the preview before blaming the app. |
+
+## 2026-07 — Documentation review pass 3 (full re-read, claims recomputed)
+
+Every doc re-read against code and the upstream reference (`seedsigner_orig/`). Findings and fixes:
+
+| # | Where — finding → fix |
+| - | --------------------- |
+| E1 | `VENDORED.md` claimed the tests pin EC M "matching the Python `qrcode` library's default (what upstream renders)" — upstream does **not** use the library default: `seedsigner_orig/src/seedsigner/helpers/qr.py` explicitly pins `ERROR_CORRECT_L` (and its `qrencode -l L` fallback). The app's display encoder (vendored default L) already matches upstream; the sentence was rewritten to say exactly that, with the file citation |
+| E2 | `QrDisplay.kt` rendered display QRs with a 1-module quiet zone; upstream renders with 3 (`border=3` / `qrencode -m 3`) → `MARGIN` now 3 (both `bitmap` and `bitmapBytes`) |
+| E3 | `current-task.md` verification numbers were stale (40 core / 16 app → actually 47 / 17 after the split-decoder + mixed-segment tests); status/next/pass-log still said "commit pending" after the commit landed → all updated to `3c40e37` |
+| E4 | `code_structure.md` qr line said "the `qr/zxing` decoders wrap the vendored ZXing" — there is no `core.qr.zxing` package (the D6 fix left this phrase half-wrong) → reworded to point at `com.google.zxing` under `core/src/main/java/` |
+
+Verified clean this pass: all README doc-table links + the 25 dice screenshots + `mnemonic.py`; 11 crosscheck tools and their counts; CI steps vs the roadmap claim; menu labels in `ToolsViews.kt` vs `dice_verification.md`; `Controller` log tag vs `developer_tips.md`; spec/SECURITY/debug_crash/developer_tips content; compileSdk/minSdk/versionName vs CI + README.

@@ -43,9 +43,9 @@ object QrDisplay {
     /** Convenience: UR object → parts. */
     fun ur2Parts(ur: UR, density: String): List<String> = ur2Parts(ur.type, ur.cbor, density)
 
-    /** Render any string as a QR bitmap (black on white, margin 1 module). */
+    /** Render any string as a QR bitmap (black on white, quiet zone 3 modules, like upstream helpers/qr.py border=3). */
     fun bitmap(text: String, sizePx: Int): Bitmap {
-        val hints = mapOf(EncodeHintType.MARGIN to 1)
+        val hints = mapOf(EncodeHintType.MARGIN to 3)
         val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, sizePx, sizePx, hints)
         val pixels = IntArray(sizePx * sizePx)
         for (y in 0 until sizePx) {
@@ -58,9 +58,9 @@ object QrDisplay {
         return bmp
     }
 
-    /** Render raw bytes (byte-mode QR) as a bitmap, e.g. compact SeedQR. */
+    /** Render raw bytes (byte-mode QR) as a bitmap, e.g. compact SeedQR (quiet zone 3, like upstream). */
     fun bitmapBytes(data: ByteArray, sizePx: Int): Bitmap {
-        val hints = mapOf(EncodeHintType.MARGIN to 1)
+        val hints = mapOf(EncodeHintType.MARGIN to 3)
         val matrix = QRCodeWriter().encodeBytes(data, BarcodeFormat.QR_CODE, sizePx, sizePx, hints)
         val pixels = IntArray(sizePx * sizePx)
         for (y in 0 until sizePx) {
